@@ -3,9 +3,19 @@ export const ROUTES = {
   LOGIN: "/login",
   DASHBOARD: "/dashboard",
 
-  DEPARTMENTS: "/departments",
   USERS: "/users",
-  JOBS: "/jobs",
+  ROLES: "/roles",
+
+  DEPARTMENTS: "/departments",
+  SKILLS: "/skills",
+
+  JOB_OPENINGS: "/job-openings",
   CANDIDATES: "/candidates",
+  APPLICATIONS: "/applications",
   INTERVIEWS: "/interviews",
+  DECISIONS: "/decisions",
+  OFFERS: "/offers",
+
+  RESUME_ANALYSES: "/ai-insights/resume-analyses",
+  FEEDBACK_SUMMARIES: "/ai-insights/feedback-summaries",
 } as const;

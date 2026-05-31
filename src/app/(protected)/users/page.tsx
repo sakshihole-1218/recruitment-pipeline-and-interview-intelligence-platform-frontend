@@ -155,6 +155,27 @@ export default function UsersPage() {
     { field: "created_at", sort: "desc" },
   ]);
 
+  // DataGrid may call onSortModelChange during its render.
+  // Keep refs + defer updates to avoid React warning.
+  const sortModelRef = useRef<GridSortModel>(sortModel);
+  const sortRafRef = useRef<number | null>(null);
+  const isMountedRef = useRef(false);
+
+  useEffect(() => {
+    sortModelRef.current = sortModel;
+  }, [sortModel]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (sortRafRef.current !== null) {
+        cancelAnimationFrame(sortRafRef.current);
+        sortRafRef.current = null;
+      }
+    };
+  }, []);
+
   // ---- Confirm dialog --------------------------------------------------------
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -211,16 +232,28 @@ export default function UsersPage() {
   );
 
   const handleSortModelChange = useCallback((model: GridSortModel) => {
-    setSortModel((prev) => {
-      const prev0 = prev?.[0];
-      const next0 = model?.[0];
-      const isSame =
-        prev.length === model.length &&
-        prev0?.field === next0?.field &&
-        prev0?.sort === next0?.sort;
-      return isSame ? prev : model;
+    const prev0 = sortModelRef.current?.[0];
+    const next0 = model?.[0];
+    const isSame =
+      (sortModelRef.current?.length ?? 0) === (model?.length ?? 0) &&
+      prev0?.field === next0?.field &&
+      prev0?.sort === next0?.sort;
+
+    if (isSame) return;
+
+    if (!isMountedRef.current) return;
+
+    if (sortRafRef.current !== null) {
+      cancelAnimationFrame(sortRafRef.current);
+    }
+
+    sortRafRef.current = requestAnimationFrame(() => {
+      sortRafRef.current = null;
+
+      if (!isMountedRef.current) return;
+      setSortModel(model);
+      setPaginationModel((prev) => ({ ...prev, page: 0 }));
     });
-    setPaginationModel((prev) => ({ ...prev, page: 0 }));
   }, []);
 
   // ---- Toggle status mutation ------------------------------------------------
@@ -414,7 +447,7 @@ export default function UsersPage() {
                 Users
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                Manage system users and their access
+                Manage System Users and their Access
               </Typography>
             </Box>
           </Stack>
@@ -575,8 +608,8 @@ export default function UsersPage() {
             "& .MuiDataGrid-columnHeader": {
               fontWeight: 700,
               fontSize: "0.75rem",
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
+              letterSpacing: "0.2px",
+              textTransform: "none",
               color: "text.secondary",
             },
             "& .MuiDataGrid-columnHeaderTitle": {

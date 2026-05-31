@@ -49,7 +49,11 @@ function DetailRow({
 }) {
   return (
     <Grid size={{ xs: 12, sm: 6 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ fontWeight: 700, textTransform: "none", letterSpacing: 0.2 }}
+      >
         {label}
       </Typography>
       <Box sx={{ mt: 0.5 }}>

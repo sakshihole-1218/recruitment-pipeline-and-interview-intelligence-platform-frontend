@@ -24,12 +24,18 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      authStorage.clear();
+    const status = error.response?.status;
+    const hasToken = !!authStorage.getAccessToken();
+    const isOnLoginPage =
+      typeof window !== "undefined" &&
+      window.location.pathname === ROUTES.LOGIN;
 
-      if (typeof window !== "undefined") {
-        window.location.href = ROUTES.LOGIN;
-      }
+    // Only force-redirect when an authenticated session expires AND we are not
+    // already on the login page. This prevents a stale token from causing a
+    // page reload while the user is actively trying to sign in.
+    if (status === 401 && hasToken && !isOnLoginPage) {
+      authStorage.clear();
+      window.location.href = ROUTES.LOGIN;
     }
 
     return Promise.reject(error);

@@ -1,9 +1,14 @@
 import { AxiosError } from "axios";
 
+interface ApiErrorDetails {
+  code?: string;
+  details?: unknown;
+}
+
 interface ApiErrorResponse {
   success?: boolean;
   message?: string;
-  error?: unknown;
+  error?: ApiErrorDetails;
   statusCode?: number;
 }
 
@@ -11,7 +16,16 @@ export const getApiErrorMessage = (error: unknown): string => {
   if (error instanceof AxiosError) {
     const responseData = error.response?.data as ApiErrorResponse | undefined;
 
-    return responseData?.message || error.message || "Something went wrong";
+    if (!responseData) {
+      return error.message || "Something went wrong";
+    }
+
+    const details = responseData.error?.details;
+    if (Array.isArray(details) && details.length > 0) {
+      return (details as string[]).join(". ");
+    }
+
+    return responseData.message || error.message || "Something went wrong";
   }
 
   if (error instanceof Error) {

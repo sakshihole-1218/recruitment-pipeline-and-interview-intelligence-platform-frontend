@@ -47,6 +47,7 @@ export function LoginForm() {
       const response = await loginAsync(values);
       authStorage.setAccessToken(response.data.access_token);
       authStorage.setRefreshToken(response.data.refresh_token);
+      authStorage.setUser(response.data.user);
       router.push(ROUTES.DASHBOARD);
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error));

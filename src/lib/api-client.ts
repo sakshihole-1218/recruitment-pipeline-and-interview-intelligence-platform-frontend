@@ -1,8 +1,8 @@
 import axios from "axios";
 
 import { envConfig } from "@/config/env.config";
-import { authStorage } from "@/shared/utils/auth-storage";
-import { ROUTES } from "@/shared/constants/routes";
+import { authStorage } from "@/utils/auth-storage";
+import { ROUTES } from "@/constants/routes";
 
 export const apiClient = axios.create({
   baseURL: envConfig.apiBaseUrl,

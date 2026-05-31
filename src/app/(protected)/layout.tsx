@@ -1,6 +1,6 @@
-import { ProtectedRoute } from "@/shared/components/protected-route";
-import { RouteGuard } from "@/shared/components/route-guard";
-import { DashboardLayout } from "@/shared/layouts/dashboard-layout";
+import { ProtectedRoute } from "@/components/protected-route";
+import { RouteGuard } from "@/components/route-guard";
+import { DashboardLayout } from "@/layouts/dashboard-layout";
 
 export default function ProtectedLayout({
   children,

@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { Box } from "@mui/material";
 
-import { AuthLayout } from "@/shared/layouts/auth-layout";
+import { AuthLayout } from "@/layouts/auth-layout";
 import { LoginForm } from "@/features/auth/components/login-form";
 
 export const metadata: Metadata = {

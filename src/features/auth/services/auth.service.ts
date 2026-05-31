@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import { ApiSuccessResponse } from "@/shared/types/api.types";
+import { ApiSuccessResponse } from "@/types/api.types";
 import {
   LoginRequest,
   LoginResponseData,

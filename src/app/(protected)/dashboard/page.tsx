@@ -15,16 +15,11 @@ import {
   Event as EventIcon,
   LocalOffer as OfferIcon,
 } from "@mui/icons-material";
-import { authStorage } from "@/shared/utils/auth-storage";
-import { getUserRole } from "@/shared/utils/rbac";
-import { ROLES, type Role } from "@/shared/constants/roles";
+import { authStorage } from "@/utils/auth-storage";
+import { getUserRole } from "@/utils/rbac";
+import { ROLES, type Role } from "@/constants/roles";
 
-// ---------------------------------------------------------------------------
-// Summary card data
-// Each card declares which roles can see it, matching ROLE_ALLOWED_ROUTES.
-// These are static UI placeholders. Replace the `value` field with real API
-// data once the backend dashboard stats endpoint is available.
-// ---------------------------------------------------------------------------
+
 const SUMMARY_CARDS: {
   label: string;
   icon: React.ReactNode;
@@ -41,7 +36,7 @@ const SUMMARY_CARDS: {
     bgColor: "#e3f2fd",
     value: "—",
     description: "Active openings",
-    // Interviewers only see their scheduled interviews, not open positions
+
     roles: [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER],
   },
   {

@@ -20,9 +20,9 @@ import { Visibility, VisibilityOff, WorkOutlined } from "@mui/icons-material";
 
 import { loginSchema, LoginFormValues } from "@/features/auth/schemas/login.schema";
 import { useLogin } from "@/features/auth/hooks/use-login";
-import { authStorage } from "@/shared/utils/auth-storage";
-import { ROUTES } from "@/shared/constants/routes";
-import { getApiErrorMessage } from "@/shared/utils/api-error-handler";
+import { authStorage } from "@/utils/auth-storage";
+import { ROUTES } from "@/constants/routes";
+import { getApiErrorMessage } from "@/utils/api-error-handler";
 
 export function LoginForm() {
   const router = useRouter();

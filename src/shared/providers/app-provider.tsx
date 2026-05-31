@@ -3,11 +3,16 @@
 import { ReactNode } from "react";
 
 import { ReactQueryProvider } from "@/shared/providers/react-query-provider";
+import { AppThemeProvider } from "@/shared/providers/theme-provider";
 
 interface AppProviderProps {
   children: ReactNode;
 }
 
 export function AppProvider({ children }: AppProviderProps) {
-  return <ReactQueryProvider>{children}</ReactQueryProvider>;
+  return (
+    <AppThemeProvider>
+      <ReactQueryProvider>{children}</ReactQueryProvider>
+    </AppThemeProvider>
+  );
 }

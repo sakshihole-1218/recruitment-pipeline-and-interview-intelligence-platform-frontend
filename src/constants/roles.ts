@@ -1,0 +1,58 @@
+import { ROUTES } from "@/constants/routes";
+
+// ---------------------------------------------------------------------------
+// System role codes — must match backend SystemRoleCode enum
+// ---------------------------------------------------------------------------
+export const ROLES = {
+  ADMIN: "ADMIN",
+  RECRUITER: "RECRUITER",
+  HIRING_MANAGER: "HIRING_MANAGER",
+  INTERVIEWER: "INTERVIEWER",
+} as const;
+
+export type Role = (typeof ROLES)[keyof typeof ROLES];
+
+// ---------------------------------------------------------------------------
+// Per-role allowed routes (leaf paths only — groups are shown when ≥1 child allowed)
+// ---------------------------------------------------------------------------
+export const ROLE_ALLOWED_ROUTES: Record<Role, string[]> = {
+  [ROLES.ADMIN]: [
+    ROUTES.DASHBOARD,
+    ROUTES.USERS,
+    ROUTES.ROLES,
+    ROUTES.DEPARTMENTS,
+    ROUTES.SKILLS,
+    ROUTES.JOB_OPENINGS,
+    ROUTES.CANDIDATES,
+    ROUTES.APPLICATIONS,
+    ROUTES.INTERVIEWS,
+    ROUTES.DECISIONS,
+    ROUTES.OFFERS,
+    ROUTES.RESUME_ANALYSES,
+    ROUTES.FEEDBACK_SUMMARIES,
+  ],
+  [ROLES.RECRUITER]: [
+    ROUTES.DASHBOARD,
+    ROUTES.JOB_OPENINGS,
+    ROUTES.CANDIDATES,
+    ROUTES.APPLICATIONS,
+    ROUTES.INTERVIEWS,
+    ROUTES.OFFERS,
+  ],
+  [ROLES.HIRING_MANAGER]: [
+    ROUTES.DASHBOARD,
+    ROUTES.JOB_OPENINGS,
+    ROUTES.CANDIDATES,
+    ROUTES.APPLICATIONS,
+    ROUTES.INTERVIEWS,
+    ROUTES.DECISIONS,
+    ROUTES.FEEDBACK_SUMMARIES,
+  ],
+  [ROLES.INTERVIEWER]: [
+    ROUTES.DASHBOARD,
+    ROUTES.INTERVIEWS,
+  ],
+};
+
+// Routes that are always accessible regardless of role (auth-level guards handle them separately)
+export const PUBLIC_ROUTES: string[] = [ROUTES.LOGIN];

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { ROUTES } from "@/shared/constants/routes";
+import { ROUTES } from "@/constants/routes";
 
 export default function HomePage() {
   redirect(ROUTES.LOGIN);

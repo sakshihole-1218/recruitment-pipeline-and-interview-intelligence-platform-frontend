@@ -20,7 +20,12 @@ export function canAccessRoute(path: string): boolean {
 
   // Some modules allow list/view to multiple roles but keep certain subroutes
   // admin-only (e.g. create/edit screens). RouteGuard relies on this check.
-  if (path === "/departments/new" || /^(?:\/departments\/[^/]+\/edit)$/.test(path)) {
+  if (
+    path === "/departments/new" ||
+    /^(?:\/departments\/[^/]+\/edit)$/.test(path) ||
+    path === "/skills/new" ||
+    /^(?:\/skills\/[^/]+\/edit)$/.test(path)
+  ) {
     return role === ROLES.ADMIN;
   }
 

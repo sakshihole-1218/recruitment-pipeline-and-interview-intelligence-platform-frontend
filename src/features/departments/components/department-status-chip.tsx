@@ -2,11 +2,7 @@
 
 import { Chip } from "@mui/material";
 
-interface UserStatusChipProps {
-  isActive: boolean;
-}
-
-export function UserStatusChip({ isActive }: UserStatusChipProps) {
+export function DepartmentStatusChip({ isActive }: { isActive: boolean }) {
   return (
     <Chip
       label={isActive ? "Active" : "Inactive"}

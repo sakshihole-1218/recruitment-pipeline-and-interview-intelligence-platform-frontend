@@ -172,11 +172,7 @@ export default function RolesPage() {
 
   const isEmptyState = !isLoading && roles.length === 0;
 
-  const rowCountRef = useRef(0);
-  if (data?.pagination?.total_records !== undefined) {
-    rowCountRef.current = data.pagination.total_records;
-  }
-  const rowCount = rowCountRef.current;
+  const rowCount = useMemo(() => data?.pagination?.total_records ?? 0, [data]);
 
   const safePaginationModel = useMemo(() => {
     const pageSize = paginationModel.pageSize;
@@ -184,12 +180,6 @@ export default function RolesPage() {
     const page = Math.min(paginationModel.page, maxPage);
     return page === paginationModel.page ? paginationModel : { ...paginationModel, page };
   }, [paginationModel, rowCount]);
-
-  useEffect(() => {
-    if (safePaginationModel.page !== paginationModel.page) {
-      setPaginationModel((prev) => ({ ...prev, page: safePaginationModel.page }));
-    }
-  }, [safePaginationModel.page, paginationModel.page]);
 
   const handlePaginationModelChange = useCallback(
     (model: GridPaginationModel) => setPaginationModel(model),

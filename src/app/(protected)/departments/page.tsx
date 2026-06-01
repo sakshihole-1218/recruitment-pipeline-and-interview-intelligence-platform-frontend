@@ -22,28 +22,29 @@ import {
   DataGrid,
   GridColDef,
   GridPaginationModel,
-  GridSortModel,
   GridRenderCellParams,
+  GridSortModel,
 } from "@mui/x-data-grid";
 import {
   Add as AddIcon,
+  Apartment as DepartmentsIcon,
   Clear as ClearIcon,
-  PeopleAlt as PeopleIcon,
+  Edit as EditIcon,
   Search as SearchIcon,
   Visibility as ViewIcon,
-  Edit as EditIcon,
 } from "@mui/icons-material";
-
 import NextLink from "next/link";
 
 import { ROUTES } from "@/constants/routes";
-import { getUserRole } from "@/utils/rbac";
-import { ROLES } from "@/constants/roles";
 import { getApiErrorMessage } from "@/utils/api-error-handler";
-import { useUsers, useToggleUserStatus } from "@/features/users/hooks/use-users";
-import { UserStatusChip } from "@/features/users/components/user-status-chip";
-import { ConfirmDialog } from "@/features/users/components/confirm-dialog";
-import type { UserResponse } from "@/features/users/types/users.types";
+import {
+  useDepartments,
+  useUpdateDepartmentStatus,
+} from "@/features/departments/hooks/use-departments";
+import { useDepartmentsPermissions } from "@/features/departments/hooks/use-departments-permissions";
+import { DepartmentStatusChip } from "@/features/departments/components/department-status-chip";
+import { ConfirmDialog } from "@/features/departments/components/confirm-dialog";
+import type { DepartmentResponse } from "@/features/departments/types/departments.types";
 import { useSnackbar } from "@/hooks/use-snackbar";
 import { AppSnackbar } from "@/components/app-snackbar";
 
@@ -54,10 +55,6 @@ declare module "@mui/x-data-grid" {
     errorMessage: string;
   }
 }
-
-
-const PAGE_SIZE_OPTIONS = [10, 25, 50];
-const getRowHeight = () => "auto" as const;
 
 interface NoRowsOverlayProps {
   isError?: boolean;
@@ -93,15 +90,15 @@ function NoRowsOverlay({ isError, errorMessage }: NoRowsOverlayProps) {
               mb: 0.5,
             }}
           >
-            <PeopleIcon sx={{ color: "error.main", fontSize: 24 }} />
+            <DepartmentsIcon sx={{ color: "error.main", fontSize: 24 }} />
           </Box>
           <Typography variant="body1" color="error" sx={{ fontWeight: 600 }}>
-            Failed to load users
+            Failed to load departments
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ maxWidth: 360, whiteSpace: "normal" }}
+            sx={{ maxWidth: 420, whiteSpace: "normal" }}
           >
             {errorMessage}
           </Typography>
@@ -120,15 +117,18 @@ function NoRowsOverlay({ isError, errorMessage }: NoRowsOverlayProps) {
               mb: 0.5,
             }}
           >
-            <PeopleIcon sx={{ color: "primary.main", fontSize: 24 }} />
+            <DepartmentsIcon sx={{ color: "primary.main", fontSize: 24 }} />
           </Box>
-          <Typography variant="body1" sx={{ fontWeight: 600, color: "text.primary" }}>
-            No users found
+          <Typography
+            variant="body1"
+            sx={{ fontWeight: 600, color: "text.primary" }}
+          >
+            No departments found
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ maxWidth: 360, whiteSpace: "normal" }}
+            sx={{ maxWidth: 420, whiteSpace: "normal" }}
           >
             Try adjusting your search or filters.
           </Typography>
@@ -138,27 +138,32 @@ function NoRowsOverlay({ isError, errorMessage }: NoRowsOverlayProps) {
   );
 }
 
-export default function UsersPage() {
-  const router = useRouter();
-  const role = getUserRole();
-  const isAdmin = role === ROLES.ADMIN;
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const getRowHeight = () => "auto" as const;
 
+export default function DepartmentsPage() {
+  const router = useRouter();
   const { snackbar, showSuccess, showError, closeSnackbar } = useSnackbar();
 
-  // ---- Filters & pagination state ----------------------------------------
-  const [search, setSearch] = useState("");
+  const {
+    canCreateDepartment,
+    canEditDepartment,
+    canToggleDepartmentStatus,
+  } = useDepartmentsPermissions();
+
   const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [isActiveFilter, setIsActiveFilter] = useState<string>("all");
+
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
     pageSize: 10,
   });
+
   const [sortModel, setSortModel] = useState<GridSortModel>([
     { field: "created_at", sort: "desc" },
   ]);
 
-  // DataGrid may call onSortModelChange during its render.
-  // Keep refs + defer updates to avoid React warning.
   const sortModelRef = useRef<GridSortModel>(sortModel);
   const sortRafRef = useRef<number | null>(null);
   const isMountedRef = useRef(false);
@@ -178,36 +183,53 @@ export default function UsersPage() {
     };
   }, []);
 
-  // ---- Confirm dialog --------------------------------------------------------
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    user: UserResponse | null;
-  }>({ open: false, user: null });
+  const queryParams = useMemo(
+    () => ({
+      page: paginationModel.page + 1,
+      limit: paginationModel.pageSize,
+      ...(search ? { search } : {}),
+      ...(isActiveFilter !== "all"
+        ? { is_active: isActiveFilter === "true" }
+        : {}),
+      ...(sortModel[0]
+        ? {
+            sort_by: sortModel[0].field as
+              | "created_at"
+              | "updated_at"
+              | "name"
+              | "code"
+              | "is_active",
+            sort_order:
+              (sortModel[0].sort?.toUpperCase() as "ASC" | "DESC") ?? "DESC",
+          }
+        : {}),
+    }),
+    [paginationModel, search, isActiveFilter, sortModel],
+  );
 
-  // ---- Query -----------------------------------------------------------------
-  const queryParams = useMemo(() => ({
-    page: paginationModel.page + 1,
-    limit: paginationModel.pageSize,
-    ...(search ? { search } : {}),
-    ...(isActiveFilter !== "all" ? { is_active: isActiveFilter === "true" } : {}),
-    ...(sortModel[0]
-      ? {
-          sort_by: sortModel[0].field,
-          sort_order: sortModel[0].sort?.toUpperCase() as "ASC" | "DESC",
-        }
-      : {}),
-  }), [paginationModel, search, isActiveFilter, sortModel]);
+  const { data, isLoading, isError, error } = useDepartments(queryParams);
 
-  const { data, isLoading, isError, error } = useUsers(queryParams);
+  const departments: DepartmentResponse[] = useMemo(() => {
+    if (!data) return [];
 
-  const users: UserResponse[] = data?.data ?? [];
+    // Offset mode
+    if (Array.isArray((data as { data?: unknown }).data)) {
+      return (data as { data: DepartmentResponse[] }).data;
+    }
 
-  const isEmptyState = !isLoading && users.length === 0;
+    // Cursor mode
+    const cursorData = (data as { data?: { data?: DepartmentResponse[] } }).data;
+    return cursorData?.data ?? [];
+  }, [data]);
 
-  const rowCount = useMemo(() => data?.pagination?.total_records ?? 0, [data]);
+  const isEmptyState = !isLoading && departments.length === 0;
 
-  // Prevent DataGrid from trying to "fix" out-of-range pages during render.
-  // This can happen after filtering/searching when total records shrink.
+  const rowCount = useMemo(() => {
+    if (!data) return 0;
+    if ("pagination" in data) return data.pagination?.total_records ?? 0;
+    return 0;
+  }, [data]);
+
   const safePaginationModel = useMemo(() => {
     const pageSize = paginationModel.pageSize;
     const maxPage =
@@ -232,7 +254,6 @@ export default function UsersPage() {
       prev0?.sort === next0?.sort;
 
     if (isSame) return;
-
     if (!isMountedRef.current) return;
 
     if (sortRafRef.current !== null) {
@@ -241,178 +262,197 @@ export default function UsersPage() {
 
     sortRafRef.current = requestAnimationFrame(() => {
       sortRafRef.current = null;
-
       if (!isMountedRef.current) return;
       setSortModel(model);
       setPaginationModel((prev) => ({ ...prev, page: 0 }));
     });
   }, []);
 
-  // ---- Toggle status mutation ------------------------------------------------
-  const pendingUserId = confirmDialog.user?.id ?? "";
-  const toggleStatus = useToggleUserStatus(pendingUserId);
-
-  const handleToggleConfirm = useCallback(async () => {
-    if (!confirmDialog.user) return;
-    try {
-      await toggleStatus.mutateAsync(!confirmDialog.user.is_active);
-      showSuccess(
-        `User ${!confirmDialog.user.is_active ? "activated" : "deactivated"} successfully.`,
-      );
-    } catch (err) {
-      showError(getApiErrorMessage(err));
-    } finally {
-      setConfirmDialog({ open: false, user: null });
-    }
-  }, [confirmDialog.user, toggleStatus, showSuccess, showError]);
-
-  // ---- Columns ---------------------------------------------------------------
-  const columns: GridColDef<UserResponse>[] = useMemo(() => [
-    {
-      field: "created_at",
-      headerName: "Created",
-      width: 140,
-      sortable: true,
-      filterable: false,
-      valueGetter: (_value, row) => row.created_at,
-    },
-    {
-      field: "first_name",
-      headerName: "Name",
-      flex: 1.2,
-      minWidth: 160,
-      valueGetter: (_value, row) => `${row.first_name} ${row.last_name}`,
-    },
-    {
-      field: "email",
-      headerName: "Email",
-      flex: 1.5,
-      minWidth: 200,
-    },
-    {
-      field: "phone",
-      headerName: "Phone",
-      flex: 1,
-      minWidth: 140,
-      sortable: false,
-      renderCell: ({ row }: GridRenderCellParams<UserResponse>) =>
-        row.phone ?? (
-          <Typography variant="body2" color="text.disabled">
-            —
-          </Typography>
-        ),
-    },
-    {
-      field: "roles",
-      headerName: "Roles",
-      flex: 1.2,
-      minWidth: 160,
-      sortable: false,
-      renderCell: ({ row }: GridRenderCellParams<UserResponse>) => (
-        <Stack direction="row" sx={{ flexWrap: "wrap", gap: 0.5, alignItems: "center", height: "100%", py: 0.5 }}>
-          {row.roles && row.roles.length > 0 ? (
-            row.roles.map((r) => (
-              <Box
-                key={r.id}
-                sx={{
-                  display: "inline-flex",
-                  px: 1,
-                  py: 0.4,
-                  borderRadius: 1.5,
-                  bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
-                  color: "primary.main",
-                  fontWeight: 800,
-                  fontSize: "0.75rem",
-                  letterSpacing: 0.2,
-                }}
-              >
-                {r.name}
-              </Box>
-            ))
-          ) : (
-            <Typography variant="body2" color="text.disabled" sx={{ fontStyle: "italic" }}>
-              No roles
-            </Typography>
-          )}
-        </Stack>
-      ),
-    },
-    {
-      field: "is_active",
-      headerName: "Status",
-      width: 110,
-      renderCell: ({ row }: GridRenderCellParams<UserResponse>) => (
-        <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <UserStatusChip isActive={row.is_active} />
-        </Box>
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      width: 150,
-      headerAlign: "center",
-      align: "center",
-      sortable: false,
-      filterable: false,
-      renderCell: ({ row }: GridRenderCellParams<UserResponse>) => (
-        <Stack direction="row" sx={{ alignItems: "center", justifyContent: "center", gap: 0.25, height: "100%", width: "100%" }}>
-          <Tooltip title="View details">
-            <IconButton
-              size="small"
-              onClick={() => router.push(`${ROUTES.USERS}/${row.id}`)}
-              sx={{
-                color: "primary.main",
-                "&:hover": { bgcolor: (t) => alpha(t.palette.primary.main, 0.08) },
-              }}
-            >
-              <ViewIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {isAdmin && (
-            <>
-              <Tooltip title="Edit user">
-                <IconButton
-                  size="small"
-                  onClick={() => router.push(`${ROUTES.USERS}/${row.id}/edit`)}
-                  sx={{
-                    color: "text.secondary",
-                    "&:hover": { bgcolor: (t) => alpha(t.palette.info.main, 0.08), color: "info.main" },
-                  }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={row.is_active ? "Deactivate user" : "Activate user"}>
-                <Switch
-                  checked={row.is_active}
-                  onChange={() => setConfirmDialog({ open: true, user: row })}
-                  size="small"
-                  color="success"
-                  sx={{ ml: 0.5 }}
-                />
-              </Tooltip>
-            </>
-          )}
-        </Stack>
-      ),
-    },
-  ], [router, isAdmin, setConfirmDialog]);
-
-  // ---- Search submit ---------------------------------------------------------
   const handleSearchSubmit = () => {
     setSearch(searchInput.trim());
     setPaginationModel((prev) => ({ ...prev, page: 0 }));
   };
 
+  // ---- Confirm dialog --------------------------------------------------------
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    department: DepartmentResponse | null;
+  }>({ open: false, department: null });
+
+  const pendingDepartmentId = confirmDialog.department?.id ?? "";
+  const toggleStatus = useUpdateDepartmentStatus(pendingDepartmentId);
+
+  const handleToggleConfirm = useCallback(async () => {
+    if (!confirmDialog.department) return;
+
+    try {
+      await toggleStatus.mutateAsync(!confirmDialog.department.is_active);
+      showSuccess(
+        `Department ${
+          !confirmDialog.department.is_active ? "activated" : "deactivated"
+        } successfully.`,
+      );
+    } catch (err) {
+      showError(getApiErrorMessage(err));
+    } finally {
+      setConfirmDialog({ open: false, department: null });
+    }
+  }, [confirmDialog.department, toggleStatus, showSuccess, showError]);
+
+  const columns: GridColDef<DepartmentResponse>[] = useMemo(
+    () => [
+      {
+        field: "created_at",
+        headerName: "Created",
+        width: 140,
+        sortable: true,
+        filterable: false,
+        valueGetter: (_value, row) => row.created_at,
+      },
+      {
+        field: "name",
+        headerName: "Name",
+        flex: 1.1,
+        minWidth: 220,
+        sortable: true,
+      },
+      {
+        field: "code",
+        headerName: "Code",
+        width: 150,
+        sortable: true,
+        renderCell: ({ row }: GridRenderCellParams<DepartmentResponse>) => (
+          <Box
+            sx={{
+              display: "inline-flex",
+              px: 1,
+              py: 0.4,
+              borderRadius: 1.5,
+              bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+              color: "primary.main",
+              fontWeight: 800,
+              fontSize: "0.75rem",
+              letterSpacing: 0.4,
+            }}
+          >
+            {row.code}
+          </Box>
+        ),
+      },
+      {
+        field: "description",
+        headerName: "Description",
+        flex: 1.9,
+        minWidth: 320,
+        sortable: false,
+        renderCell: ({ row }: GridRenderCellParams<DepartmentResponse>) => (
+          <Typography
+            variant="body2"
+            color={row.description ? "text.primary" : "text.disabled"}
+            sx={{ whiteSpace: "normal" }}
+          >
+            {row.description ?? "—"}
+          </Typography>
+        ),
+      },
+      {
+        field: "is_active",
+        headerName: "Status",
+        width: 120,
+        sortable: true,
+        renderCell: ({ row }: GridRenderCellParams<DepartmentResponse>) => (
+          <Box sx={{ display: "flex", alignItems: "center", height: "100%" }}>
+            <DepartmentStatusChip isActive={row.is_active} />
+          </Box>
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: canToggleDepartmentStatus ? 170 : 110,
+        headerAlign: "center",
+        align: "center",
+        sortable: false,
+        filterable: false,
+        renderCell: ({ row }: GridRenderCellParams<DepartmentResponse>) => (
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 0.25,
+              height: "100%",
+              width: "100%",
+            }}
+          >
+            <Tooltip title="View details">
+              <IconButton
+                size="small"
+                onClick={() => router.push(`${ROUTES.DEPARTMENTS}/${row.id}`)}
+                sx={{
+                  color: "primary.main",
+                  "&:hover": {
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                  },
+                }}
+              >
+                <ViewIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            {canEditDepartment ? (
+              <Tooltip title="Edit department">
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    router.push(`${ROUTES.DEPARTMENTS}/${row.id}/edit`)
+                  }
+                  sx={{
+                    color: "text.secondary",
+                    "&:hover": {
+                      bgcolor: (t) => alpha(t.palette.info.main, 0.08),
+                      color: "info.main",
+                    },
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : null}
+
+            {canToggleDepartmentStatus ? (
+              <Tooltip
+                title={row.is_active ? "Deactivate department" : "Activate department"}
+              >
+                <Switch
+                  checked={row.is_active}
+                  onChange={() => setConfirmDialog({ open: true, department: row })}
+                  size="small"
+                  color="success"
+                  sx={{ ml: 0.5 }}
+                />
+              </Tooltip>
+            ) : null}
+          </Stack>
+        ),
+      },
+    ],
+    [router, canEditDepartment, canToggleDepartmentStatus],
+  );
+
   return (
     <Box>
       {/* Breadcrumbs */}
       <Breadcrumbs sx={{ mb: 2 }}>
-        <Link component={NextLink} href={ROUTES.DASHBOARD} underline="hover" color="inherit">
+        <Link
+          component={NextLink}
+          href={ROUTES.DASHBOARD}
+          underline="hover"
+          color="inherit"
+        >
           Dashboard
         </Link>
-        <Typography color="text.primary">Users</Typography>
+        <Typography color="text.primary">Departments</Typography>
       </Breadcrumbs>
 
       {/* Page header */}
@@ -430,7 +470,11 @@ export default function UsersPage() {
       >
         <Stack
           direction={{ xs: "column", sm: "row" }}
-          sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 2 }}
+          sx={{
+            justifyContent: "space-between",
+            alignItems: { xs: "flex-start", sm: "center" },
+            gap: 2,
+          }}
         >
           <Stack direction="row" sx={{ alignItems: "center", gap: 2 }}>
             <Box
@@ -445,38 +489,39 @@ export default function UsersPage() {
                 flexShrink: 0,
               }}
             >
-              <PeopleIcon sx={{ color: "white", fontSize: 22 }} />
+              <DepartmentsIcon sx={{ color: "white", fontSize: 22 }} />
             </Box>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                Users
+              <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+                Departments
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                Manage System Users and their Access
+                Manage Organizational Departments Used Across Recruitment.
               </Typography>
             </Box>
           </Stack>
-          {isAdmin && (
+
+          {canCreateDepartment ? (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => router.push(`${ROUTES.USERS}/new`)}
+              onClick={() => router.push(`${ROUTES.DEPARTMENTS}/new`)}
               sx={{
                 borderRadius: 2,
-                fontWeight: 600,
+                fontWeight: 800,
                 px: 2.5,
                 py: 1,
                 boxShadow: "0 2px 8px rgba(25,118,210,0.3)",
                 "&:hover": { boxShadow: "0 4px 12px rgba(25,118,210,0.4)" },
               }}
             >
-              Create User
+              Create Department
             </Button>
-          )}
+          ) : null}
         </Stack>
       </Paper>
 
-      {/* Filters toolbar */}
+      {/* Filters */}
       <Paper
         elevation={0}
         sx={{
@@ -493,7 +538,7 @@ export default function UsersPage() {
         >
           <TextField
             size="small"
-            placeholder="Search by name or email…"
+            placeholder="Search by name or code…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
@@ -523,18 +568,29 @@ export default function UsersPage() {
             }}
             sx={{
               flex: 1,
-              maxWidth: { sm: 320 },
-              "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "background.paper" },
+              maxWidth: { sm: 360 },
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                bgcolor: "background.paper",
+              },
             }}
           />
+
           <Button
             variant="contained"
             size="small"
             onClick={handleSearchSubmit}
-            sx={{ height: 40, px: 2.5, borderRadius: 2, fontWeight: 600, flexShrink: 0 }}
+            sx={{
+              height: 40,
+              px: 2.5,
+              borderRadius: 2,
+              fontWeight: 800,
+              flexShrink: 0,
+            }}
           >
             Search
           </Button>
+
           <TextField
             select
             size="small"
@@ -545,48 +601,59 @@ export default function UsersPage() {
               setPaginationModel((prev) => ({ ...prev, page: 0 }));
             }}
             sx={{
-              minWidth: 140,
-              "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "background.paper" },
+              minWidth: 150,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                bgcolor: "background.paper",
+              },
             }}
           >
-            <MenuItem value="all">All Status</MenuItem>
+            <MenuItem value="all">All</MenuItem>
             <MenuItem value="true">Active</MenuItem>
             <MenuItem value="false">Inactive</MenuItem>
           </TextField>
         </Stack>
       </Paper>
 
-      {/* Data Grid */}
+      {/* Data grid */}
       <Paper
         elevation={0}
         sx={{
           borderRadius: 3,
-          overflow: "hidden",
           border: "1px solid",
           borderColor: "divider",
+          overflow: "hidden",
           minHeight: isEmptyState ? 0 : 400,
         }}
       >
         <DataGrid
-          rows={users}
+          rows={departments}
           columns={columns}
-          rowCount={rowCount}
+          getRowId={(row) => row.id}
           loading={isLoading}
+          rowCount={rowCount}
           autoHeight={isEmptyState}
           paginationMode="server"
+          sortingMode="server"
           paginationModel={safePaginationModel}
           onPaginationModelChange={handlePaginationModelChange}
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          sortingMode="server"
           sortModel={sortModel}
           onSortModelChange={handleSortModelChange}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          disableRowSelectionOnClick
+          getRowHeight={getRowHeight}
           initialState={{
             columns: {
               columnVisibilityModel: { created_at: false },
             },
           }}
-          disableRowSelectionOnClick
-          getRowHeight={getRowHeight}
+          slots={{ noRowsOverlay: NoRowsOverlay }}
+          slotProps={{
+            noRowsOverlay: {
+              isError,
+              errorMessage: getApiErrorMessage(error),
+            },
+          }}
           sx={{
             border: "none",
             ...(isEmptyState
@@ -605,7 +672,7 @@ export default function UsersPage() {
               borderColor: "divider",
             },
             "& .MuiDataGrid-columnHeader": {
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: "0.75rem",
               letterSpacing: "0.2px",
               textTransform: "none",
@@ -613,7 +680,7 @@ export default function UsersPage() {
               px: 2,
             },
             "& .MuiDataGrid-columnHeaderTitle": {
-              fontWeight: 700,
+              fontWeight: 800,
             },
             "& .MuiDataGrid-cell": {
               py: 1.25,
@@ -629,32 +696,28 @@ export default function UsersPage() {
               bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
             },
           }}
-          slots={{ noRowsOverlay: NoRowsOverlay }}
-          slotProps={{
-            noRowsOverlay: {
-              isError,
-              errorMessage: getApiErrorMessage(error),
-            },
-          }}
         />
       </Paper>
 
-      {/* Confirm activate / deactivate dialog */}
       <ConfirmDialog
         open={confirmDialog.open}
         title={
-          confirmDialog.user?.is_active ? "Deactivate User" : "Activate User"
+          confirmDialog.department?.is_active
+            ? "Deactivate Department"
+            : "Activate Department"
         }
         description={
-          confirmDialog.user?.is_active
-            ? `Are you sure you want to deactivate ${confirmDialog.user.first_name} ${confirmDialog.user.last_name}? They will lose access to the system.`
-            : `Are you sure you want to activate ${confirmDialog.user?.first_name} ${confirmDialog.user?.last_name}?`
+          confirmDialog.department?.is_active
+            ? `Are you sure you want to deactivate ${confirmDialog.department.name}?`
+            : `Are you sure you want to activate ${confirmDialog.department?.name}?`
         }
-        confirmLabel={confirmDialog.user?.is_active ? "Deactivate" : "Activate"}
-        confirmColor={confirmDialog.user?.is_active ? "error" : "success"}
+        confirmLabel={
+          confirmDialog.department?.is_active ? "Deactivate" : "Activate"
+        }
+        confirmColor={confirmDialog.department?.is_active ? "error" : "success"}
         loading={toggleStatus.isPending}
         onConfirm={handleToggleConfirm}
-        onCancel={() => setConfirmDialog({ open: false, user: null })}
+        onCancel={() => setConfirmDialog({ open: false, department: null })}
       />
 
       <AppSnackbar snackbar={snackbar} onClose={closeSnackbar} />

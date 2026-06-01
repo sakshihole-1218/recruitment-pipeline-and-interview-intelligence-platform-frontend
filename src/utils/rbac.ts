@@ -17,10 +17,15 @@ export function canAccessRoute(path: string): boolean {
   const role = getUserRole();
   if (!role) return false;
   const allowed = ROLE_ALLOWED_ROUTES[role];
+
+  // Some modules allow list/view to multiple roles but keep certain subroutes
+  // admin-only (e.g. create/edit screens). RouteGuard relies on this check.
+  if (path === "/departments/new" || /^(?:\/departments\/[^/]+\/edit)$/.test(path)) {
+    return role === ROLES.ADMIN;
+  }
+
   // Allow exact match OR any sub-route (e.g. /users/new, /users/:id/edit)
-  return allowed.some(
-    (route) => path === route || path.startsWith(route + "/"),
-  );
+  return allowed.some((route) => path === route || path.startsWith(route + "/"));
 }
 
 

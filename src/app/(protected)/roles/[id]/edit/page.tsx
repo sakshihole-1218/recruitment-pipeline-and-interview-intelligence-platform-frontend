@@ -9,7 +9,6 @@ import { ROUTES } from "@/constants/routes";
 import { getApiErrorMessage } from "@/utils/api-error-handler";
 import { RoleForm } from "@/features/roles/components/role-form";
 import { useRole } from "@/features/roles/hooks/use-roles";
-import type { RoleFormSchemaValues } from "@/features/roles/schemas/role.schema";
 import { useSnackbar } from "@/hooks/use-snackbar";
 import { AppSnackbar } from "@/components/app-snackbar";
 
@@ -25,7 +24,7 @@ export default function EditRolePage({ params }: EditRolePageProps) {
   const { data, isLoading, isError, error } = useRole(id);
   const role = data?.data;
 
-  const handleSubmit = async (_values: RoleFormSchemaValues) => {
+  const handleSubmit = async () => {
     showError("Role editing is not available yet because the backend does not expose an update role endpoint.");
   };
 

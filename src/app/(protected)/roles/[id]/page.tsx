@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -60,15 +60,13 @@ export default function RoleDetailPage({ params }: RoleDetailPageProps) {
   const { data, isLoading, isError, error } = useRole(id);
   const role = data?.data;
 
-  const createdAt = useMemo(
-    () => (role?.created_at ? new Date(role.created_at).toLocaleString() : ""),
-    [role?.created_at],
-  );
+  const createdAt = role?.created_at
+    ? new Date(role.created_at).toLocaleString()
+    : "";
 
-  const updatedAt = useMemo(
-    () => (role?.updated_at ? new Date(role.updated_at).toLocaleString() : ""),
-    [role?.updated_at],
-  );
+  const updatedAt = role?.updated_at
+    ? new Date(role.updated_at).toLocaleString()
+    : "";
 
   if (isError) {
     return (

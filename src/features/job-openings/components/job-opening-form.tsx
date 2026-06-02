@@ -106,6 +106,8 @@ export function JobOpeningForm({
   });
 
   const selectedDepartmentId = watch("department_id");
+  const selectedRecruiterId = watch("recruiter_user_id");
+  const selectedHiringManagerId = watch("hiring_manager_user_id");
 
   const departmentsQuery = useDepartments({
     page: 1,
@@ -166,6 +168,12 @@ export function JobOpeningForm({
   const isDepartmentMissing =
     !!selectedDepartmentId &&
     !departments.some((d) => d.id === selectedDepartmentId);
+
+  const isRecruiterMissing =
+    !!selectedRecruiterId && !recruiters.some((u) => u.id === selectedRecruiterId);
+  const isHiringManagerMissing =
+    !!selectedHiringManagerId &&
+    !hiringManagers.some((u) => u.id === selectedHiringManagerId);
 
   return (
     <Card sx={{ borderRadius: 3, boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
@@ -247,6 +255,14 @@ export function JobOpeningForm({
                     {departmentsQuery.isError ? (
                       <MenuItem value="" disabled>
                         Unable to load departments
+                      </MenuItem>
+                    ) : null}
+
+                    {field.value && !departments.some((d) => d.id === field.value) ? (
+                      <MenuItem value={field.value}>
+                        {departmentsQuery.isLoading
+                          ? "Selected department (loading...)"
+                          : "Selected department (not in active list)"}
                       </MenuItem>
                     ) : null}
 
@@ -333,7 +349,11 @@ export function JobOpeningForm({
                     error={!!errors.recruiter_user_id}
                     helperText={
                       errors.recruiter_user_id?.message ||
-                      (recruitersQuery.isError ? "Failed to load recruiters" : undefined)
+                      (recruitersQuery.isError
+                        ? "Failed to load recruiters"
+                        : isRecruiterMissing
+                          ? "This recruiter is not in the active list"
+                          : undefined)
                     }
                     disabled={recruitersQuery.isLoading || recruitersQuery.isError}
                   >
@@ -346,6 +366,14 @@ export function JobOpeningForm({
                     {recruitersQuery.isError ? (
                       <MenuItem value="" disabled>
                         Unable to load recruiters
+                      </MenuItem>
+                    ) : null}
+
+                    {field.value && !recruiters.some((u) => u.id === field.value) ? (
+                      <MenuItem value={field.value}>
+                        {recruitersQuery.isLoading
+                          ? "Selected recruiter (loading...)"
+                          : "Selected recruiter (not in active list)"}
                       </MenuItem>
                     ) : null}
                     {recruiters.map((u) => (
@@ -374,6 +402,8 @@ export function JobOpeningForm({
                       errors.hiring_manager_user_id?.message ||
                       (hiringManagersQuery.isError
                         ? "Failed to load hiring managers"
+                        : isHiringManagerMissing
+                          ? "This hiring manager is not in the active list"
                         : undefined)
                     }
                     disabled={hiringManagersQuery.isLoading || hiringManagersQuery.isError}
@@ -387,6 +417,14 @@ export function JobOpeningForm({
                     {hiringManagersQuery.isError ? (
                       <MenuItem value="" disabled>
                         Unable to load hiring managers
+                      </MenuItem>
+                    ) : null}
+
+                    {field.value && !hiringManagers.some((u) => u.id === field.value) ? (
+                      <MenuItem value={field.value}>
+                        {hiringManagersQuery.isLoading
+                          ? "Selected hiring manager (loading...)"
+                          : "Selected hiring manager (not in active list)"}
                       </MenuItem>
                     ) : null}
                     {hiringManagers.map((u) => (

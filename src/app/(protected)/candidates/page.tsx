@@ -323,12 +323,13 @@ export default function CandidatesPage() {
       {
         field: "email",
         headerName: "Email",
-        flex: 1,
-        minWidth: 220,
+        flex: 1.1,
+        minWidth: 240,
       },
       {
         field: "phone",
         headerName: "Phone",
+        flex: 0.8,
         minWidth: 160,
         valueGetter: (_v, row) => row.phone ?? "—",
         sortable: false,
@@ -336,20 +337,23 @@ export default function CandidatesPage() {
       {
         field: "current_location",
         headerName: "Location",
-        minWidth: 160,
+        flex: 0.9,
+        minWidth: 170,
         valueGetter: (_v, row) => row.current_location ?? "—",
       },
       {
         field: "total_experience_years",
         headerName: "Experience",
-        minWidth: 120,
+        flex: 0.6,
+        minWidth: 130,
         valueGetter: (_v, row) =>
           row.total_experience_years ? `${row.total_experience_years} yrs` : "—",
       },
       {
         field: "source_type",
         headerName: "Source",
-        minWidth: 140,
+        flex: 0.8,
+        minWidth: 160,
         valueGetter: (_v, row) =>
           row.source_type ? CANDIDATE_SOURCE_TYPE_LABELS[row.source_type] : "—",
         sortable: false,
@@ -357,7 +361,8 @@ export default function CandidatesPage() {
       {
         field: "is_active",
         headerName: "Status",
-        minWidth: 130,
+        flex: 0.7,
+        minWidth: 140,
         renderCell: (params: GridRenderCellParams<CandidateResponse>) => (
           <CandidateStatusChip isActive={params.row.is_active} />
         ),
@@ -367,15 +372,28 @@ export default function CandidatesPage() {
         headerName: "Actions",
         sortable: false,
         filterable: false,
-        align: "right",
-        headerAlign: "right",
-        minWidth: 170,
+        align: "center",
+        headerAlign: "center",
+        width: canEditCandidate || canToggleCandidateStatus ? 220 : 110,
         renderCell: (params: GridRenderCellParams<CandidateResponse>) => {
           const row = params.row;
           return (
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+            <Stack
+              direction="row"
+              spacing={0.5}
+              useFlexGap
+              sx={{ alignItems: "center", width: "100%", justifyContent: "center", flexWrap: "wrap" }}
+            >
               <Tooltip title="View">
-                <IconButton onClick={() => router.push(`${ROUTES.CANDIDATES}/${row.id}`)}>
+                <IconButton
+                  onClick={() => router.push(`${ROUTES.CANDIDATES}/${row.id}`)}
+                  sx={{
+                    color: "primary.main",
+                    "&:hover": {
+                      bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                    },
+                  }}
+                >
                   <ViewIcon fontSize="small" />
                 </IconButton>
               </Tooltip>

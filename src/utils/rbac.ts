@@ -37,6 +37,11 @@ export function canAccessRoute(path: string): boolean {
     return role === ROLES.ADMIN || role === ROLES.RECRUITER;
   }
 
+  // Candidates: mutations are ADMIN/RECRUITER (create/edit screens)
+  if (path === "/candidates/new" || /^(?:\/candidates\/[^/]+\/edit)$/.test(path)) {
+    return role === ROLES.ADMIN || role === ROLES.RECRUITER;
+  }
+
   // Allow exact match OR any sub-route (e.g. /users/new, /users/:id/edit)
   return allowed.some((route) => path === route || path.startsWith(route + "/"));
 }

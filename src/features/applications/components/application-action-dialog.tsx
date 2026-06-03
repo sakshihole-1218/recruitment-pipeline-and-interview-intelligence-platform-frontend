@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Alert,
@@ -131,6 +131,11 @@ export function ApplicationActionDialog({
 }: ApplicationActionDialogProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const handleClose = () => {
+    setSubmitError(null);
+    onClose();
+  };
+
   const rejectMutation = useRejectApplication(applicationId);
   const holdMutation = useHoldApplication(applicationId);
   const withdrawMutation = useWithdrawApplication(applicationId);
@@ -182,11 +187,6 @@ export function ApplicationActionDialog({
     bulkAssignHiringManagerMutation.isPending;
 
   const closeBlocked = isSubmitting;
-
-  useEffect(() => {
-    if (!open) return;
-    setSubmitError(null);
-  }, [open, mode]);
 
   const rejectForm = useForm<RejectApplicationFormValues>({
     resolver: zodResolver(rejectApplicationSchema) as unknown as Resolver<RejectApplicationFormValues>,
@@ -309,7 +309,7 @@ export function ApplicationActionDialog({
       }
 
       onSuccess?.();
-      onClose();
+      handleClose();
     } catch (err) {
       const message = getApiErrorMessage(err);
       setSubmitError(message);
@@ -318,7 +318,7 @@ export function ApplicationActionDialog({
   }
 
   return (
-    <Dialog open={open} onClose={closeBlocked ? undefined : onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={closeBlocked ? undefined : handleClose} fullWidth maxWidth="sm">
       <DialogTitle sx={{ fontWeight: 900 }}>{titleFor(mode)}</DialogTitle>
       <DialogContent>
         {submitError ? (

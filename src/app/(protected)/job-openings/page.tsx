@@ -372,8 +372,6 @@ export default function JobOpeningsPage() {
     if (!confirmDialog.action || !confirmDialog.opening) return;
 
     try {
-      const opening = confirmDialog.opening;
-
       switch (confirmDialog.action) {
         case "activate": {
           const res = await update.mutateAsync({ is_active: true });
@@ -456,10 +454,6 @@ export default function JobOpeningsPage() {
         headerAlign: "center",
         renderCell: (params: GridRenderCellParams<JobOpeningResponse>) => {
           const row = params.row;
-
-          const canMutate = canManageJobOpeningStatus;
-          const canDeactivate = canMutate && row.is_active;
-          const canActivate = canMutate && !row.is_active;
 
           return (
             <Stack

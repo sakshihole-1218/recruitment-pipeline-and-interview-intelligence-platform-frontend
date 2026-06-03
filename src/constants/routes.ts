@@ -13,6 +13,7 @@ export const ROUTES = {
   CANDIDATES: "/candidates",
   APPLICATIONS: "/applications",
   INTERVIEWS: "/interviews",
+  INTERVIEW_ROUNDS: "/interview-rounds",
   DECISIONS: "/decisions",
   OFFERS: "/offers",
 

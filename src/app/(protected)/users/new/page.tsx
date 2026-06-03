@@ -82,7 +82,7 @@ export default function CreateUserPage() {
           Users
         </Link>
         <Typography color="text.primary" sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
-          Create User
+          New
         </Typography>
       </Breadcrumbs>
 

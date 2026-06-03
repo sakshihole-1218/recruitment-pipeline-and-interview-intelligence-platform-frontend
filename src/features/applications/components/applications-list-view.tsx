@@ -34,6 +34,7 @@ import {
   NavigateNext as NavigateNextIcon,
   WorkOutlined as ApplicationsIcon,
 } from "@mui/icons-material";
+import type { Theme } from "@mui/material/styles";
 
 import { ROUTES } from "@/constants/routes";
 import { getApiErrorMessage } from "@/utils/api-error-handler";
@@ -229,7 +230,7 @@ export function ApplicationsListView() {
     () => ({
       color: "primary.main",
       "&:hover": {
-        bgcolor: (t: any) => alpha(t.palette.primary.main, 0.08),
+        bgcolor: (t: Theme) => alpha(t.palette.primary.main, 0.08),
       },
     }),
     [],
@@ -239,7 +240,7 @@ export function ApplicationsListView() {
     () => ({
       color: "text.secondary",
       "&:hover": {
-        bgcolor: (t: any) => alpha(t.palette.text.primary, 0.06),
+        bgcolor: (t: Theme) => alpha(t.palette.text.primary, 0.06),
       },
     }),
     [],

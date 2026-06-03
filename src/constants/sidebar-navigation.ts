@@ -47,6 +47,10 @@ export const SIDEBAR_NAVIGATION = [
         path: ROUTES.APPLICATIONS,
       },
       {
+        title: "Interview Rounds",
+        path: ROUTES.INTERVIEW_ROUNDS,
+      },
+      {
         title: "Interviews",
         path: ROUTES.INTERVIEWS,
       },

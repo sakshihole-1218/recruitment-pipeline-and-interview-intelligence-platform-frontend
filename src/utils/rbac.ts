@@ -47,6 +47,22 @@ export function canAccessRoute(path: string): boolean {
     return role === ROLES.ADMIN || role === ROLES.RECRUITER;
   }
 
+  // Interview Rounds: mutations are ADMIN/RECRUITER
+  if (
+    path === "/interview-rounds/create" ||
+    /^(?:\/interview-rounds\/[^/]+\/edit)$/.test(path)
+  ) {
+    return role === ROLES.ADMIN || role === ROLES.RECRUITER;
+  }
+
+  // Interviews: scheduling & rescheduling are ADMIN/RECRUITER
+  if (
+    path === "/interviews/schedule" ||
+    /^(?:\/interviews\/[^/]+\/edit)$/.test(path)
+  ) {
+    return role === ROLES.ADMIN || role === ROLES.RECRUITER;
+  }
+
   // Allow exact match OR any sub-route (e.g. /users/new, /users/:id/edit)
   return allowed.some((route) => path === route || path.startsWith(route + "/"));
 }

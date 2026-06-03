@@ -104,7 +104,7 @@ export default function CreateJobOpeningPage() {
           Job Openings
         </Link>
         <Typography color="text.primary" sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
-          Create
+          New
         </Typography>
       </Breadcrumbs>
 

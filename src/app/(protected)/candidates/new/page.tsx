@@ -133,7 +133,7 @@ export default function CreateCandidatePage() {
           Candidates
         </Link>
         <Typography color="text.primary" sx={{ fontWeight: 900, fontSize: "0.875rem" }}>
-          Create
+          New
         </Typography>
       </Breadcrumbs>
 

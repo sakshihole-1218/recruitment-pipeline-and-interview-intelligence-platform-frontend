@@ -42,11 +42,16 @@ function useBreadcrumbs() {
   const isId = (s: string) =>
     /^[0-9a-f-]{8,}$/i.test(s) || /^\d+$/.test(s);
 
+  const toLabel = (seg: string, prevSeg?: string) => {
+    if (seg === "create") return "New";
+    if (seg === "new") return "New";
+    if (seg === "schedule" && prevSeg === "interviews") return "New";
+    return seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
   return segments
     .map((seg, i) => ({
-      label: isId(seg)
-        ? seg
-        : seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      label: isId(seg) ? seg : toLabel(seg, segments[i - 1]),
       path: "/" + segments.slice(0, i + 1).join("/"),
       isId: isId(seg),
     }))

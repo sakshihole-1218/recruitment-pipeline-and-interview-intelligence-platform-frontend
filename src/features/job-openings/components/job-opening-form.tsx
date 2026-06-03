@@ -17,7 +17,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import {
   jobOpeningSchema,
@@ -77,7 +77,6 @@ export function JobOpeningForm({
     handleSubmit,
     control,
     formState: { errors },
-    watch,
   } = useForm<JobOpeningFormValues>({
     resolver: zodResolver(jobOpeningSchema) as unknown as Resolver<JobOpeningFormValues>,
     defaultValues: {
@@ -105,9 +104,9 @@ export function JobOpeningForm({
     mode: "onTouched",
   });
 
-  const selectedDepartmentId = watch("department_id");
-  const selectedRecruiterId = watch("recruiter_user_id");
-  const selectedHiringManagerId = watch("hiring_manager_user_id");
+  const selectedDepartmentId = useWatch({ control, name: "department_id" });
+  const selectedRecruiterId = useWatch({ control, name: "recruiter_user_id" });
+  const selectedHiringManagerId = useWatch({ control, name: "hiring_manager_user_id" });
 
   const departmentsQuery = useDepartments({
     page: 1,

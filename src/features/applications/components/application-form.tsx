@@ -18,7 +18,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useEffect, useMemo, useState } from "react";
 import type { Resolver } from "react-hook-form";
 
@@ -99,7 +99,6 @@ export function ApplicationForm({
     control,
     register,
     formState: { errors },
-    watch,
   } = useForm<CreateApplicationFormValues>({
     resolver: zodResolver(createApplicationSchema) as unknown as Resolver<CreateApplicationFormValues>,
     defaultValues: {
@@ -112,8 +111,8 @@ export function ApplicationForm({
     mode: "onTouched",
   });
 
-  const candidateId = watch("candidate_id");
-  const jobOpeningId = watch("job_opening_id");
+  const candidateId = useWatch({ control, name: "candidate_id" });
+  const jobOpeningId = useWatch({ control, name: "job_opening_id" });
 
   const [candidateSearch, setCandidateSearch] = useState("");
   const [jobOpeningSearch, setJobOpeningSearch] = useState("");

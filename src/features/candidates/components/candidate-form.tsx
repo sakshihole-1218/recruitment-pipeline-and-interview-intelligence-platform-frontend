@@ -18,7 +18,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 
 import {
@@ -102,7 +102,6 @@ export function CandidateForm({
     control,
     reset,
     formState: { errors, isDirty },
-    watch,
   } = useForm<CandidateFormValues>({
     resolver: zodResolver(candidateSchema) as unknown as Resolver<CandidateFormValues>,
     defaultValues: resolvedDefaultValues,
@@ -125,7 +124,7 @@ export function CandidateForm({
     reset(resolvedDefaultValues);
   }, [defaultValues, isDirty, reset, resolvedDefaultValues]);
 
-  const currency = watch("currency_code");
+  const currency = useWatch({ control, name: "currency_code" });
 
   const skillsQuery = useSkills({
     page: 1,

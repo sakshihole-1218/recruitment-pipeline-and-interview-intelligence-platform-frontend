@@ -27,6 +27,7 @@ import {
   GridRenderCellParams,
   GridSortModel,
 } from "@mui/x-data-grid";
+import type { SystemStyleObject } from "@mui/system";
 import {
   Add as AddIcon,
   Clear as ClearIcon,
@@ -86,20 +87,28 @@ type OverlaySlotProps = HTMLAttributes<HTMLDivElement> &
   };
 
 function NoRowsOverlay({ isError, errorMessage, sx: _sx, ...divProps }: OverlaySlotProps) {
+  const baseSx: SystemStyleObject<Theme> = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 220,
+    px: 2,
+    py: 4,
+    gap: 1.5,
+    textAlign: "center",
+  };
+
+  const mergedSx: SxProps<Theme> = _sx
+    ? Array.isArray(_sx)
+      ? [baseSx, ..._sx]
+      : [baseSx, _sx]
+    : baseSx;
+
   return (
     <Box
       {...divProps}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 220,
-        px: 2,
-        py: 4,
-        gap: 1.5,
-        textAlign: "center",
-      }}
+      sx={mergedSx}
     >
       <Box
         sx={{

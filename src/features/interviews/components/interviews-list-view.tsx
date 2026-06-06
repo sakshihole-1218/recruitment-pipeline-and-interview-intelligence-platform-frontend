@@ -46,6 +46,7 @@ import {
   INTERVIEW_MODE_LABELS,
   INTERVIEW_STATUSES,
   INTERVIEW_STATUS_LABELS,
+  getInterviewDisplayStatus,
   type InterviewMode,
   type InterviewResponse,
   type InterviewStatus,
@@ -298,7 +299,7 @@ export function InterviewsListView() {
         headerName: "Status",
         flex: 0.75,
         minWidth: 150,
-        renderCell: (p) => <InterviewStatusChip status={p.row.interview_status} />,
+        renderCell: (p) => <InterviewStatusChip status={getInterviewDisplayStatus(p.row)} />,
       },
       {
         field: "actions",

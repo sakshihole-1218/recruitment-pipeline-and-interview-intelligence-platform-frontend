@@ -31,6 +31,7 @@ import { useInterviewsPermissions } from "@/features/interviews/hooks/use-interv
 import { InterviewModeChip } from "@/features/interviews/components/interview-mode-chip";
 import { InterviewStatusChip } from "@/features/interviews/components/interview-status-chip";
 import { CancelInterviewDialog } from "@/features/interviews/components/cancel-interview-dialog";
+import { getInterviewDisplayStatus } from "@/features/interviews/types/interviews.types";
 import type { CancelInterviewFormValues } from "@/features/interviews/schemas/interview-cancel.schema";
 import { useApplication } from "@/features/applications/hooks/use-applications";
 import { useCandidate } from "@/features/candidates/hooks/use-candidates";
@@ -113,7 +114,7 @@ export function InterviewDetailsView({ id }: { id: string }) {
 
           {interview ? (
             <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-              <InterviewStatusChip status={interview.interview_status} />
+              <InterviewStatusChip status={getInterviewDisplayStatus(interview)} />
               <InterviewModeChip mode={interview.interview_mode} />
             </Stack>
           ) : null}

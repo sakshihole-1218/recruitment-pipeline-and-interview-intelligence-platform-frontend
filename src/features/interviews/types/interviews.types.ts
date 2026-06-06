@@ -89,6 +89,19 @@ export interface InterviewResponse {
   panel_members?: InterviewPanelMemberResponse[];
 }
 
+export function getInterviewDisplayStatus(
+  interview: Pick<InterviewResponse, "interview_status" | "rescheduled_from_interview_id">,
+): InterviewStatus {
+  if (
+    interview.interview_status === "SCHEDULED" &&
+    interview.rescheduled_from_interview_id
+  ) {
+    return "RESCHEDULED";
+  }
+
+  return interview.interview_status;
+}
+
 export interface InterviewPanelMemberInput {
   user_id: string;
   role_in_panel: InterviewPanelRole;

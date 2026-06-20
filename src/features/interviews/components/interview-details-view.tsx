@@ -18,6 +18,7 @@ import {
   ArrowBack as BackIcon,
   NavigateNext as NavigateNextIcon,
   Person as CandidateIcon,
+  SmartToyOutlined as AiIcon,
   WorkOutlined as JobIcon,
   CalendarMonth as ScheduleIcon,
 } from "@mui/icons-material";
@@ -126,8 +127,25 @@ export function InterviewDetailsView({ id }: { id: string }) {
           useFlexGap
           sx={{ alignItems: "center", justifyContent: { xs: "flex-start", sm: "flex-end" }, flexWrap: "wrap" }}
         >
-          <Button variant="outlined" size="small" disabled sx={{ borderRadius: 2, fontWeight: 900 }}>
-            Start AI Interview
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AiIcon />}
+            onClick={() => router.push(`${ROUTES.INTERVIEWS}/${id}/ai-room`)}
+            disabled={interviewQuery.isLoading || !interview}
+            sx={{ borderRadius: 2, fontWeight: 900 }}
+          >
+            AI Lobby
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AiIcon />}
+            onClick={() => router.push(`${ROUTES.INTERVIEWS}/${id}/ai-room/session`)}
+            disabled={interviewQuery.isLoading || !interview}
+            sx={{ borderRadius: 2, fontWeight: 900 }}
+          >
+            Join AI Interview
           </Button>
           {canRescheduleInterview ? (
             <Button

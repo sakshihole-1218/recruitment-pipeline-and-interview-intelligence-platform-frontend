@@ -248,3 +248,17 @@ export function useEndAiInterviewSession(interviewId: string) {
     },
   });
 }
+
+export function useStartAiInterviewSession(interviewId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (sessionId: string) => aiInterviewSessionService.start(sessionId),
+    onSuccess: (result) => {
+      queryClient.setQueryData(
+        AI_INTERVIEW_QUERY_KEYS.sessionByInterview(interviewId),
+        result.data,
+      );
+    },
+  });
+}

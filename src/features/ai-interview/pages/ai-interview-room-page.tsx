@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,11 +11,13 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Link,
   Stack,
   Typography,
 } from "@mui/material";
 import {
+  Mic as MicIcon,
   NavigateNext as NavigateNextIcon,
   PsychologyAlt as AiIcon,
 } from "@mui/icons-material";
@@ -25,28 +27,20 @@ import { ROUTES } from "@/constants/routes";
 import { useSnackbar } from "@/hooks/use-snackbar";
 import { useApplication } from "@/features/applications/hooks/use-applications";
 import { AiInterviewerPanel } from "@/features/ai-interview/components/ai-interviewer-panel";
-import { CandidateAnswerBox } from "@/features/ai-interview/components/candidate-answer-box";
+import { CameraPreview } from "@/features/ai-interview/components/camera-preview";
+import { CandidateVoiceAnswerBox } from "@/features/ai-interview/components/candidate-voice-answer-box";
 import { CurrentQuestionPanel } from "@/features/ai-interview/components/current-question-panel";
 import { InterviewEngineProvider } from "@/features/ai-interview/context/interview-engine-context";
 import { useInterviewEngine } from "@/features/ai-interview/hooks/use-interview-engine";
 import { InterviewProgressBar } from "@/features/ai-interview/components/interview-progress-bar";
-import {
-  InterviewDataLoadingState,
-  LiveKitCandidateRoom,
-  LiveKitCandidateStage,
-  LiveKitRoomLoadingState,
-  LiveKitRoomControls,
-} from "@/features/ai-interview/components/livekit-candidate-room";
 import { QuestionContextCard } from "@/features/ai-interview/components/question-context-card";
 import { TranscriptPanel } from "@/features/ai-interview/components/transcript-panel";
 import {
   useEndAiInterviewSession,
   useEnsureAiInterviewSession,
-  usePrepareAiInterviewRoomConnection,
+  useStartAiInterviewSession,
 } from "@/features/ai-interview/hooks/use-ai-interview";
-import type {
-  AiInterviewRoomConnection,
-} from "@/features/ai-interview/types/ai-interview.types";
+import type { AiInterviewSessionResponse } from "@/features/ai-interview/types/ai-interview.types";
 import { useCandidate } from "@/features/candidates/hooks/use-candidates";
 import { useInterview } from "@/features/interviews/hooks/use-interviews";
 import { useJobOpening } from "@/features/job-openings/hooks/use-job-openings";
@@ -57,15 +51,10 @@ function buildCandidateName(firstName?: string | null, lastName?: string | null)
   return fullName || "Candidate";
 }
 
-const ROOM_PREPARATION_FALLBACK_TIMEOUT_MS = 20000;
-
 export function AiInterviewRoomPage({ id }: { id: string }) {
   const router = useRouter();
   const { snackbar, showError, closeSnackbar } = useSnackbar();
-
-  const [connection, setConnection] = useState<AiInterviewRoomConnection | null>(null);
-  const [preparationTimedOut, setPreparationTimedOut] = useState(false);
-  const hasRequestedConnectionRef = useRef(false);
+  const hasStartedSessionRef = useRef(false);
 
   const interviewQuery = useInterview(id);
   const interview = interviewQuery.data?.data;
@@ -82,7 +71,7 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
   const aiSessionQuery = useEnsureAiInterviewSession(id);
   const aiSession = aiSessionQuery.data;
 
-  const prepareConnectionMutation = usePrepareAiInterviewRoomConnection();
+  const startSessionMutation = useStartAiInterviewSession(id);
   const endInterviewMutation = useEndAiInterviewSession(id);
 
   const candidateName = useMemo(
@@ -91,54 +80,35 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
   );
 
   useEffect(() => {
-    if (
-      !aiSession ||
-      hasRequestedConnectionRef.current ||
-      prepareConnectionMutation.isPending
-    ) {
+    if (!aiSession) {
+      hasStartedSessionRef.current = false;
       return;
     }
 
-    hasRequestedConnectionRef.current = true;
+    if (aiSession.session_status === "IN_PROGRESS") {
+      return;
+    }
 
-    prepareConnectionMutation
-      .mutateAsync({
-        interviewId: id,
-        session: aiSession,
-        displayName: candidateName,
-      })
-      .then((result) => {
-        setPreparationTimedOut(false);
-        setConnection(result);
-      })
-      .catch((error) => {
-        hasRequestedConnectionRef.current = false;
+    if (aiSession.session_status !== "READY") {
+      return;
+    }
+
+    if (hasStartedSessionRef.current || startSessionMutation.isPending) {
+      return;
+    }
+
+    hasStartedSessionRef.current = true;
+
+    startSessionMutation.mutate(aiSession.id, {
+      onError: (error) => {
+        hasStartedSessionRef.current = false;
         showError(getApiErrorMessage(error));
-      });
-  }, [
-    aiSession,
-    candidateName,
-    id,
-    prepareConnectionMutation,
-    showError,
-  ]);
-
-  useEffect(() => {
-    if (connection || prepareConnectionMutation.isError || preparationTimedOut) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setPreparationTimedOut(true);
-    }, ROOM_PREPARATION_FALLBACK_TIMEOUT_MS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [connection, preparationTimedOut, prepareConnectionMutation.isError]);
+      },
+    });
+  }, [aiSession, showError, startSessionMutation]);
 
   const handleEndInterview = async () => {
-    const sessionId = connection?.session.id ?? aiSession?.id;
+    const sessionId = aiSession?.id;
 
     if (!sessionId) {
       router.push(`${ROUTES.INTERVIEWS}/${id}/ai-room/completed`);
@@ -158,17 +128,16 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
   const pageError =
     (interviewQuery.isError && getApiErrorMessage(interviewQuery.error)) ||
     (aiSessionQuery.isError && getApiErrorMessage(aiSessionQuery.error)) ||
-    (prepareConnectionMutation.isError &&
-      getApiErrorMessage(prepareConnectionMutation.error)) ||
-    (preparationTimedOut &&
-      "Room preparation is taking too long. Please verify backend and LiveKit services, then retry.") ||
+    (startSessionMutation.isError &&
+      getApiErrorMessage(startSessionMutation.error)) ||
     "";
 
   const isPreparing =
     interviewQuery.isLoading ||
     aiSessionQuery.isLoading ||
-    prepareConnectionMutation.isPending ||
-    !connection;
+    startSessionMutation.isPending ||
+    !aiSession ||
+    aiSession.session_status !== "IN_PROGRESS";
 
   return (
     <Box sx={{ maxWidth: 1440, mx: "auto", minHeight: "calc(100vh - 140px)" }}>
@@ -208,14 +177,14 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
           </CardContent>
         </Card>
       ) : isPreparing ? (
-        <LiveKitRoomLoadingState />
-      ) : connection ? (
-        <InterviewEngineProvider sessionId={connection.session.id} onError={showError}>
+        <InterviewRoomLoadingState />
+      ) : aiSession ? (
+        <InterviewEngineProvider sessionId={aiSession.id} onError={showError}>
           <AiInterviewRoomContent
-            connection={connection}
+            session={aiSession}
             candidateName={candidateName}
             candidateLoading={candidateQuery.isLoading}
-            jobOpeningTitle={jobOpening?.title ?? "—"}
+            jobOpeningTitle={jobOpening?.title ?? "-"}
             jobOpeningLoading={jobOpeningQuery.isLoading}
             onEndInterview={handleEndInterview}
             endPending={endInterviewMutation.isPending}
@@ -229,7 +198,7 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
 }
 
 function AiInterviewRoomContent({
-  connection,
+  session,
   candidateName,
   candidateLoading,
   jobOpeningTitle,
@@ -237,7 +206,7 @@ function AiInterviewRoomContent({
   onEndInterview,
   endPending,
 }: {
-  connection: AiInterviewRoomConnection;
+  session: AiInterviewSessionResponse;
   candidateName: string;
   candidateLoading: boolean;
   jobOpeningTitle: string;
@@ -265,102 +234,170 @@ function AiInterviewRoomContent({
   }
 
   if (engine.isLoading) {
-    return <InterviewDataLoadingState />;
+    return (
+      <InterviewRoomLoadingState
+        title="Loading interview data..."
+        description="We're fetching interview questions and transcripts for this session."
+      />
+    );
   }
 
   return (
-    <LiveKitCandidateRoom tokenDetails={connection.token}>
-      <Stack spacing={3} sx={{ minHeight: "calc(100vh - 220px)" }}>
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Stack spacing={1.5}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-                <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                  Session Details
-                </Typography>
-                <Chip
-                  icon={<AiIcon />}
-                  label={`${connection.session.session_code} • ${connection.session.session_status}`}
-                  color="primary"
-                  variant="outlined"
-                />
-                <Chip
-                  label={`${engine.answeredQuestions}/${engine.totalQuestions || 0} answered`}
-                  variant="outlined"
-                />
-              </Stack>
-
-              <Typography variant="body2" color="text.secondary">
-                Candidate: {candidateLoading ? "Loading..." : candidateName}
+    <Stack spacing={3} sx={{ minHeight: "calc(100vh - 220px)" }}>
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                Session Details
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Job Opening: {jobOpeningLoading ? "Loading..." : jobOpeningTitle}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Room: {connection.room.room_name}
-              </Typography>
+              <Chip
+                icon={<AiIcon />}
+                label={`${session.session_code} • ${session.session_status}`}
+                color="primary"
+                variant="outlined"
+              />
+              <Chip
+                label={`${engine.answeredQuestions}/${engine.totalQuestions || 0} answered`}
+                variant="outlined"
+              />
+              <Chip icon={<MicIcon />} label="Voice mode" variant="outlined" />
             </Stack>
-          </CardContent>
-        </Card>
 
-        <InterviewProgressBar
-          questionLabel={engine.currentQuestionLabel}
-          answeredQuestions={engine.answeredQuestions}
-          totalQuestions={engine.totalQuestions}
-          progressPercent={engine.progressPercent}
-        />
-
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", xl: "1.1fr 0.9fr 1fr" },
-            gap: 3,
-            alignItems: "stretch",
-            minHeight: 0,
-          }}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <LiveKitCandidateStage />
-          </Box>
-
-          <Stack spacing={2.5} sx={{ minWidth: 0 }}>
-            <CurrentQuestionPanel
-              currentQuestion={engine.currentQuestion}
-              currentQuestionIndex={engine.rootQuestionIndex}
-              totalQuestions={engine.totalQuestions}
-              currentQuestionLabel={engine.currentQuestionLabel}
-              isFollowUp={engine.isCurrentQuestionFollowUp}
-            />
-            <QuestionContextCard
-              currentQuestion={engine.currentQuestion}
-              isFollowUp={engine.isCurrentQuestionFollowUp}
-            />
-            <AiInterviewerPanel />
+            <Typography variant="body2" color="text.secondary">
+              Candidate: {candidateLoading ? "Loading..." : candidateName}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Job Opening: {jobOpeningLoading ? "Loading..." : jobOpeningTitle}
+            </Typography>
           </Stack>
+        </CardContent>
+      </Card>
 
-          <Box sx={{ minWidth: 0, minHeight: 0 }}>
-            <TranscriptPanel transcriptEntries={engine.transcriptEntries} />
-          </Box>
+      <InterviewProgressBar
+        questionLabel={engine.currentQuestionLabel}
+        answeredQuestions={engine.answeredQuestions}
+        totalQuestions={engine.totalQuestions}
+        progressPercent={engine.progressPercent}
+      />
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", xl: "1.1fr 0.9fr 1fr" },
+          gap: 3,
+          alignItems: "stretch",
+          minHeight: 0,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <CameraPreview />
         </Box>
 
-        <CandidateAnswerBox
-          disabled={!engine.currentQuestion || engine.isBusy}
-          submitPending={engine.isBusy}
-          onSubmitAnswer={engine.submitAnswer}
-        />
+        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+          <CurrentQuestionPanel
+            currentQuestion={engine.currentQuestion}
+            currentQuestionIndex={engine.rootQuestionIndex}
+            totalQuestions={engine.totalQuestions}
+            currentQuestionLabel={engine.currentQuestionLabel}
+            isFollowUp={engine.isCurrentQuestionFollowUp}
+          />
+          <QuestionContextCard
+            currentQuestion={engine.currentQuestion}
+            isFollowUp={engine.isCurrentQuestionFollowUp}
+          />
+          <AiInterviewerPanel />
+        </Stack>
 
-        <LiveKitRoomControls
-          onEndInterview={onEndInterview}
-          endPending={endPending}
-        />
-      </Stack>
-    </LiveKitCandidateRoom>
+        <Box sx={{ minWidth: 0, minHeight: 0 }}>
+          <TranscriptPanel transcriptEntries={engine.transcriptEntries} />
+        </Box>
+      </Box>
+
+      <CandidateVoiceAnswerBox
+        disabled={!engine.currentQuestion || engine.isBusy}
+        submitPending={engine.isBusy}
+        nextPending={engine.isBusy}
+        canGoNext={engine.canAdvanceToNextQuestion}
+        onSubmitManualAnswer={engine.submitAnswer}
+        onSubmitAudioAnswer={engine.submitAudioAnswer}
+        onNextQuestion={engine.advanceToNextQuestion}
+      />
+
+      <InterviewFooterControls
+        onEndInterview={onEndInterview}
+        endPending={endPending}
+      />
+    </Stack>
+  );
+}
+
+function InterviewRoomLoadingState({
+  title = "Preparing your interview session...",
+  description = "We're getting the AI interview session ready without LiveKit.",
+}: {
+  title?: string;
+  description?: string;
+}) {
+  return (
+    <Stack
+      spacing={2}
+      sx={{
+        minHeight: 420,
+        borderRadius: 3,
+        border: "1px solid",
+        borderColor: "divider",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.paper",
+        p: 4,
+      }}
+    >
+      <CircularProgress />
+      <Typography sx={{ fontWeight: 800 }}>{title}</Typography>
+      <Typography variant="body2" color="text.secondary">
+        {description}
+      </Typography>
+    </Stack>
+  );
+}
+
+function InterviewFooterControls({
+  onEndInterview,
+  endPending,
+}: {
+  onEndInterview: () => Promise<void>;
+  endPending: boolean;
+}) {
+  return (
+    <Stack
+      direction={{ xs: "column", md: "row" }}
+      spacing={2}
+      sx={{
+        alignItems: { xs: "stretch", md: "center" },
+        justifyContent: "flex-end",
+        p: 2,
+        borderTop: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+      }}
+    >
+      <Button
+        variant="contained"
+        color="error"
+        onClick={onEndInterview}
+        disabled={endPending}
+        sx={{ borderRadius: 2, fontWeight: 900, minWidth: 180 }}
+      >
+        {endPending ? "Ending..." : "End Interview"}
+      </Button>
+    </Stack>
   );
 }

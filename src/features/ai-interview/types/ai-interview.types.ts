@@ -207,6 +207,13 @@ export interface CreateAiInterviewTranscriptPayload {
   sequence_number?: number;
 }
 
+export interface TranscribeAiInterviewAnswerPayload {
+  ai_interview_session_id: string;
+  ai_interview_question_id: string;
+  audio: Blob;
+  file_name?: string;
+}
+
 export type AiInterviewSessionDetailResponse =
   ApiSuccessResponse<AiInterviewSessionResponse>;
 export type AiInterviewSessionsByInterviewResponse =

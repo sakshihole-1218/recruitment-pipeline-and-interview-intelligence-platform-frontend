@@ -19,11 +19,14 @@ import {
 import {
   useCreateInterviewTranscript,
   useInterviewTranscripts,
+  useTranscribeInterviewAnswer,
 } from "@/features/ai-interview/hooks/use-interview-transcripts";
 import type {
   AiInterviewQuestionResponse,
   AiInterviewTranscriptEntryResponse,
+  TranscribeAiInterviewAnswerPayload,
 } from "@/features/ai-interview/types/ai-interview.types";
+import type { RecordedAudio } from "@/features/ai-interview/components/audio-recorder";
 import { getApiErrorMessage } from "@/utils/api-error-handler";
 
 interface InterviewEngineContextValue {
@@ -41,6 +44,9 @@ interface InterviewEngineContextValue {
   isLoading: boolean;
   errorMessage: string;
   submitAnswer: (messageText: string) => Promise<void>;
+  submitAudioAnswer: (recording: RecordedAudio) => Promise<void>;
+  advanceToNextQuestion: () => Promise<void>;
+  canAdvanceToNextQuestion: boolean;
 }
 
 const InterviewEngineContext = createContext<InterviewEngineContextValue | null>(
@@ -77,12 +83,17 @@ export function InterviewEngineProvider({
   const [followUpQueue, setFollowUpQueue] = useState<AiInterviewQuestionResponse[]>(
     [],
   );
+  const [pendingAdvance, setPendingAdvance] = useState<{
+    question: AiInterviewQuestionResponse;
+    candidateAnswer: string;
+  } | null>(null);
 
   const postedInterviewerQuestionsRef = useRef<Set<string>>(new Set());
 
   const questionsQuery = useInterviewQuestions(sessionId);
   const transcriptQuery = useInterviewTranscripts(sessionId);
   const createTranscriptMutation = useCreateInterviewTranscript(sessionId);
+  const transcribeAnswerMutation = useTranscribeInterviewAnswer(sessionId);
   const markQuestionAskedMutation = useMarkInterviewQuestionAsked(sessionId);
   const markQuestionAnsweredMutation = useMarkInterviewQuestionAnswered(sessionId);
   const generateFollowUpMutation = useGenerateFollowUpQuestion(sessionId);
@@ -123,6 +134,7 @@ export function InterviewEngineProvider({
   const progressPercent = totalQuestions
     ? Math.min((answeredQuestions / totalQuestions) * 100, 100)
     : 0;
+  const canAdvanceToNextQuestion = pendingAdvance?.question.id === currentQuestion?.id;
 
   const errorMessage =
     (questionsQuery.isError && getApiErrorMessage(questionsQuery.error)) ||
@@ -182,7 +194,7 @@ export function InterviewEngineProvider({
 
   const submitAnswer = useCallback(
     async (messageText: string) => {
-      if (!currentQuestion) return;
+      if (!currentQuestion || pendingAdvance) return;
 
       const trimmed = messageText.trim();
       if (!trimmed) return;
@@ -206,18 +218,66 @@ export function InterviewEngineProvider({
         onError(getApiErrorMessage(error));
       }
 
-      await proceedAfterQuestion(currentQuestion, trimmed, followUpQueue);
+      setPendingAdvance({
+        question: currentQuestion,
+        candidateAnswer: trimmed,
+      });
     },
     [
       createTranscriptMutation,
       currentQuestion,
-      followUpQueue,
       markQuestionAnsweredMutation,
       onError,
-      proceedAfterQuestion,
+      pendingAdvance,
       sessionId,
     ],
   );
+
+  const submitAudioAnswer = useCallback(
+    async (recording: RecordedAudio) => {
+      if (!currentQuestion || pendingAdvance) return;
+
+      let response;
+
+      try {
+        const payload: TranscribeAiInterviewAnswerPayload = {
+          ai_interview_session_id: sessionId,
+          ai_interview_question_id: currentQuestion.id,
+          audio: recording.blob,
+          file_name: recording.fileName,
+        };
+
+        response = await transcribeAnswerMutation.mutateAsync(payload);
+      } catch (error) {
+        const message = getApiErrorMessage(error);
+        onError(message);
+        throw error;
+      }
+
+      setPendingAdvance({
+        question: currentQuestion,
+        candidateAnswer: response.data.message_text.trim(),
+      });
+    },
+    [
+      currentQuestion,
+      onError,
+      pendingAdvance,
+      sessionId,
+      transcribeAnswerMutation,
+    ],
+  );
+
+  const advanceToNextQuestion = useCallback(async () => {
+    if (!pendingAdvance) return;
+
+    await proceedAfterQuestion(
+      pendingAdvance.question,
+      pendingAdvance.candidateAnswer,
+      followUpQueue,
+    );
+    setPendingAdvance(null);
+  }, [followUpQueue, pendingAdvance, proceedAfterQuestion]);
 
   useEffect(() => {
     if (!currentQuestion || !sessionId) return;
@@ -276,15 +336,21 @@ export function InterviewEngineProvider({
       progressPercent,
       isBusy:
         createTranscriptMutation.isPending ||
+        transcribeAnswerMutation.isPending ||
         markQuestionAskedMutation.isPending ||
         markQuestionAnsweredMutation.isPending ||
         generateFollowUpMutation.isPending,
       isLoading: questionsQuery.isLoading || transcriptQuery.isLoading,
       errorMessage,
       submitAnswer,
+      submitAudioAnswer,
+      advanceToNextQuestion,
+      canAdvanceToNextQuestion,
     }),
     [
+      advanceToNextQuestion,
       answeredQuestions,
+      canAdvanceToNextQuestion,
       createTranscriptMutation.isPending,
       currentQuestion,
       currentQuestionLabel,
@@ -299,8 +365,10 @@ export function InterviewEngineProvider({
       questionsQuery.isLoading,
       rootQuestions,
       submitAnswer,
+      submitAudioAnswer,
       totalQuestions,
       transcriptEntries,
+      transcribeAnswerMutation.isPending,
       transcriptQuery.isLoading,
     ],
   );

@@ -2,8 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { AI_INTERVIEW_QUESTIONS_QUERY_KEYS } from "@/features/ai-interview/hooks/use-interview-questions";
 import { aiInterviewTranscriptService } from "@/features/ai-interview/services/ai-interview-transcript.service";
-import type { CreateAiInterviewTranscriptPayload } from "@/features/ai-interview/types/ai-interview.types";
+import type {
+  CreateAiInterviewTranscriptPayload,
+  TranscribeAiInterviewAnswerPayload,
+} from "@/features/ai-interview/types/ai-interview.types";
 
 export const AI_INTERVIEW_TRANSCRIPTS_QUERY_KEYS = {
   all: ["ai-interview-transcripts"] as const,
@@ -37,6 +41,23 @@ export function useCreateInterviewTranscript(sessionId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: AI_INTERVIEW_TRANSCRIPTS_QUERY_KEYS.session(sessionId),
+      });
+    },
+  });
+}
+
+export function useTranscribeInterviewAnswer(sessionId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: TranscribeAiInterviewAnswerPayload) =>
+      aiInterviewTranscriptService.transcribeAnswer(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: AI_INTERVIEW_TRANSCRIPTS_QUERY_KEYS.session(sessionId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: AI_INTERVIEW_QUESTIONS_QUERY_KEYS.session(sessionId),
       });
     },
   });

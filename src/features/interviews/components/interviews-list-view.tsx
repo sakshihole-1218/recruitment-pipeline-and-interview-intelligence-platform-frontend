@@ -304,7 +304,7 @@ export function InterviewsListView() {
       {
         field: "actions",
         headerName: "Actions",
-        width: 140,
+        width: 180,
         headerAlign: "center",
         align: "center",
         sortable: false,
@@ -323,6 +323,16 @@ export function InterviewsListView() {
                 sx={actionIconButtonSx}
               >
                 <ViewIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Open AI interview lobby">
+              <IconButton
+                size="small"
+                onClick={() => router.push(`${ROUTES.INTERVIEWS}/${p.row.id}/ai-room`)}
+                sx={actionIconButtonSx}
+              >
+                <AiIcon fontSize="small" />
               </IconButton>
             </Tooltip>
 

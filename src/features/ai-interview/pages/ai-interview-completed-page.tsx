@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   CardContent,
-  Link,
   Stack,
   Typography,
 } from "@mui/material";
@@ -22,12 +21,18 @@ export function AiInterviewCompletedPage({ id }: { id: string }) {
   return (
     <Box sx={{ maxWidth: 900, mx: "auto" }}>
       <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
-        <Link component={NextLink} href={ROUTES.INTERVIEWS} underline="hover" color="inherit">
+        <NextLink
+          href={ROUTES.INTERVIEWS}
+          style={{ color: "inherit", textDecoration: "none" }}
+        >
           Interviews
-        </Link>
-        <Link component={NextLink} href={`${ROUTES.INTERVIEWS}/${id}`} underline="hover" color="inherit">
+        </NextLink>
+        <NextLink
+          href={`${ROUTES.INTERVIEWS}/${id}`}
+          style={{ color: "inherit", textDecoration: "none" }}
+        >
           Interview Details
-        </Link>
+        </NextLink>
         <Typography color="text.primary">Interview Completed</Typography>
       </Breadcrumbs>
 
@@ -56,22 +61,28 @@ export function AiInterviewCompletedPage({ id }: { id: string }) {
             </Stack>
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-              <Button
-                component={NextLink}
+              <NextLink
                 href={ROUTES.INTERVIEWS}
-                variant="outlined"
-                sx={{ borderRadius: 2, fontWeight: 800 }}
+                style={{ textDecoration: "none" }}
               >
-                Back to Interviews
-              </Button>
-              <Button
-                component={NextLink}
+                <Button
+                  variant="outlined"
+                  sx={{ borderRadius: 2, fontWeight: 800 }}
+                >
+                  Back to Interviews
+                </Button>
+              </NextLink>
+              <NextLink
                 href={`${ROUTES.INTERVIEWS}/${id}`}
-                variant="contained"
-                sx={{ borderRadius: 2, fontWeight: 900 }}
+                style={{ textDecoration: "none" }}
               >
-                View Interview Details
-              </Button>
+                <Button
+                  variant="contained"
+                  sx={{ borderRadius: 2, fontWeight: 900 }}
+                >
+                  View Interview Details
+                </Button>
+              </NextLink>
             </Stack>
           </Stack>
         </CardContent>

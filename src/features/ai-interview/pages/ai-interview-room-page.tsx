@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { AxiosError } from "axios";
+import { useEffect, useMemo, useRef, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +41,7 @@ import {
   useEnsureAiInterviewSession,
   useStartAiInterviewSession,
 } from "@/features/ai-interview/hooks/use-ai-interview";
+import { useGenerateInterviewPlan } from "@/features/ai-interview/hooks/use-interview-questions";
 import type { AiInterviewSessionResponse } from "@/features/ai-interview/types/ai-interview.types";
 import { useCandidate } from "@/features/candidates/hooks/use-candidates";
 import { useInterview } from "@/features/interviews/hooks/use-interviews";
@@ -51,10 +53,24 @@ function buildCandidateName(firstName?: string | null, lastName?: string | null)
   return fullName || "Candidate";
 }
 
+function getApiErrorCode(error: unknown): string | undefined {
+  if (error instanceof AxiosError) {
+    const responseData = error.response?.data as
+      | { error?: { code?: string }; code?: string }
+      | undefined;
+
+    return responseData?.error?.code || responseData?.code;
+  }
+
+  return undefined;
+}
+
 export function AiInterviewRoomPage({ id }: { id: string }) {
   const router = useRouter();
   const { snackbar, showError, closeSnackbar } = useSnackbar();
   const hasStartedSessionRef = useRef(false);
+  const generatedPlanSessionIdRef = useRef<string | null>(null);
+  const [isQuestionPlanReady, setIsQuestionPlanReady] = useState(false);
 
   const interviewQuery = useInterview(id);
   const interview = interviewQuery.data?.data;
@@ -73,6 +89,7 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
 
   const startSessionMutation = useStartAiInterviewSession(id);
   const endInterviewMutation = useEndAiInterviewSession(id);
+  const generateInterviewPlanMutation = useGenerateInterviewPlan(aiSession?.id ?? "");
 
   const candidateName = useMemo(
     () => buildCandidateName(candidate?.first_name, candidate?.last_name),
@@ -82,7 +99,15 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
   useEffect(() => {
     if (!aiSession) {
       hasStartedSessionRef.current = false;
+      generatedPlanSessionIdRef.current = null;
+      setIsQuestionPlanReady(false);
       return;
+    }
+
+    if (aiSession.question_generation_status === "COMPLETED") {
+      setIsQuestionPlanReady(true);
+    } else if (generatedPlanSessionIdRef.current !== aiSession.id) {
+      setIsQuestionPlanReady(false);
     }
 
     if (aiSession.session_status === "IN_PROGRESS") {
@@ -106,6 +131,52 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
       },
     });
   }, [aiSession, showError, startSessionMutation]);
+
+  useEffect(() => {
+    if (!aiSession) {
+      return;
+    }
+
+    if (aiSession.question_generation_status === "COMPLETED") {
+      setIsQuestionPlanReady(true);
+      return;
+    }
+
+    if (aiSession.session_status !== "IN_PROGRESS") {
+      return;
+    }
+
+    if (
+      generatedPlanSessionIdRef.current === aiSession.id ||
+      generateInterviewPlanMutation.isPending
+    ) {
+      return;
+    }
+
+    generatedPlanSessionIdRef.current = aiSession.id;
+
+    generateInterviewPlanMutation.mutate(undefined, {
+      onSuccess: async () => {
+        setIsQuestionPlanReady(true);
+        await aiSessionQuery.refetch();
+      },
+      onError: async (error) => {
+        const errorCode = getApiErrorCode(error);
+
+        if (
+          errorCode === "AI_INTERVIEW_QUESTIONS_ALREADY_EXIST" ||
+          errorCode === "AI_INTERVIEW_PLAN_ALREADY_GENERATED"
+        ) {
+          setIsQuestionPlanReady(true);
+          await aiSessionQuery.refetch();
+          return;
+        }
+
+        generatedPlanSessionIdRef.current = null;
+        showError(getApiErrorMessage(error));
+      },
+    });
+  }, [aiSession, aiSessionQuery, generateInterviewPlanMutation, showError]);
 
   const handleEndInterview = async () => {
     const sessionId = aiSession?.id;
@@ -136,8 +207,10 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
     interviewQuery.isLoading ||
     aiSessionQuery.isLoading ||
     startSessionMutation.isPending ||
+    generateInterviewPlanMutation.isPending ||
     !aiSession ||
-    aiSession.session_status !== "IN_PROGRESS";
+    aiSession.session_status !== "IN_PROGRESS" ||
+    !isQuestionPlanReady;
 
   return (
     <Box sx={{ maxWidth: 1440, mx: "auto", minHeight: "calc(100vh - 140px)" }}>

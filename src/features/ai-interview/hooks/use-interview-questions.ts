@@ -22,6 +22,19 @@ export function useInterviewQuestions(sessionId: string) {
   });
 }
 
+export function useGenerateInterviewPlan(sessionId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => aiInterviewQuestionService.generatePlan(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: AI_INTERVIEW_QUESTIONS_QUERY_KEYS.session(sessionId),
+      });
+    },
+  });
+}
+
 export function useMarkInterviewQuestionAsked(sessionId: string) {
   const queryClient = useQueryClient();
 

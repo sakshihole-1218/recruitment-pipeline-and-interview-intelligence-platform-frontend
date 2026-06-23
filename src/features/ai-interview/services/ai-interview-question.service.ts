@@ -21,6 +21,19 @@ export const aiInterviewQuestionService = {
     return response.data;
   },
 
+  generatePlan: async (
+    sessionId: string,
+  ): Promise<AiInterviewQuestionsBySessionResponse> => {
+    const response = await apiClient.post<AiInterviewQuestionsBySessionResponse>(
+      `${BASE}/generate-plan`,
+      {
+        ai_interview_session_id: sessionId,
+      },
+      { timeout: AI_INTERVIEW_REQUEST_TIMEOUT_MS },
+    );
+    return response.data;
+  },
+
   markAsked: async (id: string): Promise<AiInterviewQuestionDetailResponse> => {
     const response = await apiClient.patch<AiInterviewQuestionDetailResponse>(
       `${BASE}/${id}/mark-asked`,

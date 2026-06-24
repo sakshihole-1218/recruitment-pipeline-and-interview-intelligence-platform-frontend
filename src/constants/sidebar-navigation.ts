@@ -62,6 +62,10 @@ export const SIDEBAR_NAVIGATION = [
         title: "Offers",
         path: ROUTES.OFFERS,
       },
+      {
+        title: "Feedback",
+        path: ROUTES.FEEDBACK,
+      },
     ],
   },
   {
@@ -70,10 +74,6 @@ export const SIDEBAR_NAVIGATION = [
       {
         title: "Resume Analyses",
         path: ROUTES.RESUME_ANALYSES,
-      },
-      {
-        title: "Feedback Summaries",
-        path: ROUTES.FEEDBACK_SUMMARIES,
       },
     ],
   },

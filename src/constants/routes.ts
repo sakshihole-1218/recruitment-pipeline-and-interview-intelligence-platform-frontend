@@ -16,6 +16,7 @@ export const ROUTES = {
   INTERVIEW_ROUNDS: "/interview-rounds",
   DECISIONS: "/decisions",
   OFFERS: "/offers",
+  FEEDBACK: "/feedback",
 
   RESUME_ANALYSES: "/ai-insights/resume-analyses",
   FEEDBACK_SUMMARIES: "/ai-insights/feedback-summaries",

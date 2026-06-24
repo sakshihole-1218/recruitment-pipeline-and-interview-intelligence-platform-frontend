@@ -55,6 +55,7 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   Decisions: <GavelIcon sx={{ fontSize: 26 }} />,
   Offers: <OfferIcon sx={{ fontSize: 26 }} />,
   "AI Insights": <AIIcon sx={{ fontSize: 26 }} />,
+  Resumes: <ResumeIcon sx={{ fontSize: 26 }} />,
   "Resume Analyses": <ResumeIcon sx={{ fontSize: 26 }} />,
   "Feedback Summaries": <FeedbackIcon sx={{ fontSize: 26 }} />,
 };
@@ -64,6 +65,7 @@ function shortLabel(title: string): string {
     "Access Control": "Access",
     "Master Data": "Master",
     "Job Openings": "Jobs",
+    Resumes: "Resumes",
     "Resume Analyses": "Resumes",
     "Feedback Summaries": "Feedback",
     "AI Insights": "AI",

@@ -47,6 +47,10 @@ export const SIDEBAR_NAVIGATION = [
         path: ROUTES.APPLICATIONS,
       },
       {
+        title: "Resumes",
+        path: ROUTES.RESUMES,
+      },
+      {
         title: "Interview Rounds",
         path: ROUTES.INTERVIEW_ROUNDS,
       },
@@ -65,15 +69,6 @@ export const SIDEBAR_NAVIGATION = [
       {
         title: "Feedback",
         path: ROUTES.FEEDBACK,
-      },
-    ],
-  },
-  {
-    title: "AI Insights",
-    children: [
-      {
-        title: "Resume Analyses",
-        path: ROUTES.RESUME_ANALYSES,
       },
     ],
   },

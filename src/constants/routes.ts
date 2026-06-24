@@ -12,6 +12,7 @@ export const ROUTES = {
   JOB_OPENINGS: "/job-openings",
   CANDIDATES: "/candidates",
   APPLICATIONS: "/applications",
+  RESUMES: "/resumes",
   INTERVIEWS: "/interviews",
   INTERVIEW_ROUNDS: "/interview-rounds",
   DECISIONS: "/decisions",

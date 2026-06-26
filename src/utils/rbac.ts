@@ -63,6 +63,11 @@ export function canAccessRoute(path: string): boolean {
     return role === ROLES.ADMIN || role === ROLES.RECRUITER;
   }
 
+  // Decisions: create/edit are ADMIN/HIRING_MANAGER only
+  if (path === "/decisions/create" || /^(?:\/decisions\/[^/]+\/edit)$/.test(path)) {
+    return role === ROLES.ADMIN || role === ROLES.HIRING_MANAGER;
+  }
+
   // Allow exact match OR any sub-route (e.g. /users/new, /users/:id/edit)
   return allowed.some((route) => path === route || path.startsWith(route + "/"));
 }

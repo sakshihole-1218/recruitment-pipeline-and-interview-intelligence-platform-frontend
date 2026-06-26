@@ -34,6 +34,15 @@ export const interviewerReviewService = {
     return response.data;
   },
 
+  getByApplication: async (
+    applicationId: string,
+  ): Promise<InterviewerReviewsResponse> => {
+    const response = await apiClient.get<InterviewerReviewsResponse>(
+      `${BASE}/application/${applicationId}`,
+    );
+    return response.data;
+  },
+
   update: async (
     id: string,
     payload: UpdateInterviewerReviewPayload,

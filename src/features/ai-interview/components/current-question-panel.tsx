@@ -1,24 +1,52 @@
 "use client";
 
-import { Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { Alert, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
 import { HelpOutlined as QuestionIcon } from "@mui/icons-material";
 
-import type { AiInterviewQuestionResponse } from "@/features/ai-interview/types/ai-interview.types";
+import { AiQuestionSpeaker } from "@/features/ai-interview/components/AiQuestionSpeaker";
+import type {
+  AiInterviewQuestionResponse,
+  AiInterviewRoomState,
+} from "@/features/ai-interview/types/ai-interview.types";
 
 interface CurrentQuestionPanelProps {
   currentQuestion: AiInterviewQuestionResponse | null;
   currentQuestionIndex: number;
   totalQuestions: number;
+  answeredQuestions: number;
   currentQuestionLabel: string;
+  currentFollowUpDepth: number;
   isFollowUp: boolean;
+  interviewState: AiInterviewRoomState;
+  interviewStateLabel: string;
+  interviewStateDescription: string;
+  isSpeechSupported: boolean;
+  isSpeaking: boolean;
+  isPaused: boolean;
+  onReplayQuestion: () => void;
+  onStopSpeaking: () => void;
+  onPauseSpeaking: () => void;
+  onResumeSpeaking: () => void;
 }
 
 export function CurrentQuestionPanel({
   currentQuestion,
   currentQuestionIndex,
   totalQuestions,
+  answeredQuestions,
   currentQuestionLabel,
+  currentFollowUpDepth,
   isFollowUp,
+  interviewState,
+  interviewStateLabel,
+  interviewStateDescription,
+  isSpeechSupported,
+  isSpeaking,
+  isPaused,
+  onReplayQuestion,
+  onStopSpeaking,
+  onPauseSpeaking,
+  onResumeSpeaking,
 }: CurrentQuestionPanelProps) {
   return (
     <Card
@@ -43,29 +71,66 @@ export function CurrentQuestionPanel({
               </Typography>
             </Stack>
 
-            <Chip
-              label={
-                isFollowUp
-                  ? "Follow-up Question"
-                  : totalQuestions
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+              <Chip
+                label={
+                  totalQuestions
                     ? `Question ${currentQuestionIndex + 1} of ${totalQuestions}`
                     : "No questions"
-              }
-              color={isFollowUp ? "warning" : "primary"}
-              variant={isFollowUp ? "filled" : "outlined"}
-            />
+                }
+                color="primary"
+                variant="outlined"
+              />
+              {isFollowUp ? (
+                <Chip
+                  label={
+                    currentFollowUpDepth > 0
+                      ? `Follow-Up ${currentFollowUpDepth}`
+                      : "Follow-Up"
+                  }
+                  color="warning"
+                  variant="filled"
+                />
+              ) : null}
+              <Chip
+                label={`${answeredQuestions}/${totalQuestions || 0} answered`}
+                variant="outlined"
+              />
+              <Chip
+                label={interviewStateLabel}
+                color={interviewState === "COMPLETED" ? "success" : "default"}
+                variant={interviewState === "AI_SPEAKING" ? "filled" : "outlined"}
+              />
+            </Stack>
           </Stack>
+
+          <Alert severity={interviewState === "COMPLETED" ? "success" : "info"}>
+            {interviewStateDescription}
+          </Alert>
 
           {currentQuestion ? (
             <>
               <Typography variant="body2" color="text.secondary">
-                {currentQuestionLabel}
+                {isFollowUp
+                  ? `${currentQuestionLabel} • Follow-Up ${currentFollowUpDepth}`
+                  : currentQuestionLabel}
               </Typography>
+              <AiQuestionSpeaker
+                questionId={currentQuestion.id}
+                questionText={currentQuestion.question_text}
+                isSupported={isSpeechSupported}
+                isSpeaking={isSpeaking}
+                isPaused={isPaused}
+                onReplay={onReplayQuestion}
+                stop={onStopSpeaking}
+                pause={onPauseSpeaking}
+                resume={onResumeSpeaking}
+              />
               <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
                 <Chip label={currentQuestion.topic} variant="outlined" />
                 <Chip label={currentQuestion.difficulty_level} variant="outlined" />
                 <Chip
-                  label={isFollowUp ? "FOLLOW-UP" : currentQuestion.question_type}
+                  label={isFollowUp ? `FOLLOW-UP ${currentFollowUpDepth}` : currentQuestion.question_type}
                   color={isFollowUp ? "warning" : "default"}
                   variant="outlined"
                 />
@@ -84,6 +149,12 @@ export function CurrentQuestionPanel({
               >
                 {currentQuestion.question_text}
               </Typography>
+
+              {isSpeaking ? (
+                <Alert severity="info">
+                  AI Interviewer is speaking. Recording will be available once playback finishes.
+                </Alert>
+              ) : null}
             </>
           ) : (
             <Typography
@@ -96,7 +167,7 @@ export function CurrentQuestionPanel({
                 borderColor: "divider",
               }}
             >
-              No interview questions are available for this session yet.
+              Interview questions are complete for this session.
             </Typography>
           )}
         </Stack>

@@ -25,7 +25,11 @@ export interface RecordedAudio {
 
 interface AudioRecorderProps {
   disabled?: boolean;
+  recordingBlocked?: boolean;
+  recordingBlockedMessage?: string;
   onRecordingChange?: (recording: RecordedAudio | null) => void;
+  onRecordingBlocked?: () => void;
+  onRecordingStateChange?: (isRecording: boolean) => void;
 }
 
 function formatDuration(totalSeconds: number) {
@@ -41,7 +45,11 @@ function formatDuration(totalSeconds: number) {
 
 export function AudioRecorder({
   disabled,
+  recordingBlocked,
+  recordingBlockedMessage,
   onRecordingChange,
+  onRecordingBlocked,
+  onRecordingStateChange,
 }: AudioRecorderProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -103,7 +111,20 @@ export function AudioRecorder({
   }, [audioUrl]);
 
   const handleStartRecording = async () => {
-    if (disabled || isRecording) {
+    if (isRecording) {
+      return;
+    }
+
+    if (recordingBlocked) {
+      setPermissionError(
+        recordingBlockedMessage ||
+          "Recording is temporarily unavailable while the AI interviewer is speaking.",
+      );
+      onRecordingBlocked?.();
+      return;
+    }
+
+    if (disabled) {
       return;
     }
 
@@ -155,12 +176,13 @@ export function AudioRecorder({
       };
 
       recorder.start();
-      setPermissionError("");
-      setElapsedSeconds(0);
-      setIsRecording(true);
-      timerRef.current = window.setInterval(() => {
-        setElapsedSeconds((current) => current + 1);
-      }, 1000);
+    setPermissionError("");
+    setElapsedSeconds(0);
+    setIsRecording(true);
+    onRecordingStateChange?.(true);
+    timerRef.current = window.setInterval(() => {
+      setElapsedSeconds((current) => current + 1);
+    }, 1000);
     } catch (error) {
       const permissionDenied =
         error instanceof DOMException &&
@@ -184,6 +206,7 @@ export function AudioRecorder({
 
     clearTimer();
     setIsRecording(false);
+    onRecordingStateChange?.(false);
     mediaRecorderRef.current.stop();
   };
 

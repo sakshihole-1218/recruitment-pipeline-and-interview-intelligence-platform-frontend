@@ -168,11 +168,6 @@ export interface GenerateFollowUpQuestionPayload {
   candidate_answer: string;
 }
 
-export interface GenerateFollowUpQuestionResponse {
-  should_generate_follow_up: boolean;
-  follow_up_question?: AiInterviewQuestionResponse | null;
-}
-
 export const TRANSCRIPT_SPEAKER_TYPES = [
   "AI_INTERVIEWER",
   "CANDIDATE",
@@ -214,6 +209,31 @@ export interface TranscribeAiInterviewAnswerPayload {
   file_name?: string;
 }
 
+export const AI_INTERVIEW_ROOM_STATES = [
+  "AI_SPEAKING",
+  "WAITING_FOR_ANSWER",
+  "RECORDING",
+  "TRANSCRIBING",
+  "GENERATING_FOLLOWUP",
+  "FOLLOWUP_READY",
+  "MOVING_NEXT",
+  "COMPLETED",
+] as const;
+
+export type AiInterviewRoomState =
+  (typeof AI_INTERVIEW_ROOM_STATES)[number];
+
+export type AiInterviewAnswerNextStep =
+  | "FOLLOWUP_READY"
+  | "MOVING_NEXT"
+  | "COMPLETED";
+
+export interface AiInterviewAnswerSubmissionResult {
+  transcriptText: string;
+  nextStep: AiInterviewAnswerNextStep;
+  generatedFollowUpQuestionId: string | null;
+}
+
 export type AiInterviewSessionDetailResponse =
   ApiSuccessResponse<AiInterviewSessionResponse>;
 export type AiInterviewSessionsByInterviewResponse =
@@ -231,4 +251,4 @@ export type AiInterviewTranscriptsBySessionResponse =
 export type AiInterviewTranscriptDetailResponse =
   ApiSuccessResponse<AiInterviewTranscriptEntryResponse>;
 export type GenerateFollowUpQuestionDetailResponse =
-  ApiSuccessResponse<GenerateFollowUpQuestionResponse>;
+  ApiSuccessResponse<AiInterviewQuestionResponse>;

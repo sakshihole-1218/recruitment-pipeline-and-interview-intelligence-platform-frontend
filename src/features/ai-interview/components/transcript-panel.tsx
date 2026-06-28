@@ -57,7 +57,7 @@ export function TranscriptPanel({ transcriptEntries }: TranscriptPanelProps) {
           </Stack>
 
           <Typography variant="body2" color="text.secondary">
-            Manual transcript simulation is active. New entries appear here in real time.
+            Interview transcripts refresh automatically after each spoken answer.
           </Typography>
 
           <Stack

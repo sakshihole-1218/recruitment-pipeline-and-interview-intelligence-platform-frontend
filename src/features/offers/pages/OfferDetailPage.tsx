@@ -24,8 +24,10 @@ import {
 } from "@mui/material";
 import {
   ArrowBack as BackIcon,
+  CalendarTodayOutlined as CalendarIcon,
   CheckCircleOutlined as AcceptIcon,
   CancelOutlined as CancelIcon,
+  EventAvailableOutlined as JoiningIcon,
   EditOutlined as EditIcon,
   LocalOfferOutlined as OfferIcon,
   NavigateNext as NavigateNextIcon,
@@ -90,9 +92,66 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
         {label}
       </Typography>
       <Box sx={{ mt: 0.5 }}>
-        <Typography variant="body2">{value}</Typography>
+        <Box sx={{ fontSize: "0.875rem", lineHeight: 1.43 }}>{value}</Box>
       </Box>
     </Grid>
+  );
+}
+
+function SummaryPill({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <Stack
+      direction="row"
+      spacing={1.25}
+      sx={{
+        alignItems: "center",
+        px: 1.5,
+        py: 1.25,
+        borderRadius: 2.5,
+        border: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        minWidth: { xs: "100%", sm: 0 },
+      }}
+    >
+      {icon ? (
+        <Box
+          sx={{
+            width: 34,
+            height: 34,
+            borderRadius: 2,
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+            color: "primary.main",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </Box>
+      ) : null}
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", fontWeight: 800, letterSpacing: 0.2 }}
+        >
+          {label}
+        </Typography>
+        <Box sx={{ mt: 0.25, fontSize: "0.875rem", lineHeight: 1.43, fontWeight: 700 }}>
+          {value}
+        </Box>
+      </Box>
+    </Stack>
   );
 }
 
@@ -295,14 +354,37 @@ export function OfferDetailPage({ id }: { id: string }) {
               </Stack>
 
               {offer ? (
-                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                  <OfferStatusChip status={offer.offer_status} />
-                  {offer.offer_status === "ACCEPTED" ? (
-                    <Chip
-                      label={`Joining ${formatDate(offer.expected_joining_date)}`}
-                      color="success"
-                      variant="outlined"
-                      sx={{ fontWeight: 800 }}
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.25}
+                  sx={{ flexWrap: "wrap" }}
+                >
+                  <SummaryPill
+                    label="Offer Status"
+                    value={<OfferStatusChip status={offer.offer_status} />}
+                    icon={<OfferIcon sx={{ fontSize: 18 }} />}
+                  />
+                  <SummaryPill
+                    label="Expected Joining"
+                    value={formatDate(offer.expected_joining_date)}
+                    icon={<JoiningIcon sx={{ fontSize: 18 }} />}
+                  />
+                  <SummaryPill
+                    label="Offered On"
+                    value={formatDate(offer.offered_at ?? offer.created_at)}
+                    icon={<CalendarIcon sx={{ fontSize: 18 }} />}
+                  />
+                  {decision ? (
+                    <SummaryPill
+                      label="Hiring Decision"
+                      value={
+                        <Chip
+                          label={decision.decision_status.replaceAll("_", " ")}
+                          variant="outlined"
+                          size="small"
+                          sx={{ fontWeight: 800 }}
+                        />
+                      }
                     />
                   ) : null}
                 </Stack>
@@ -480,21 +562,21 @@ export function OfferDetailPage({ id }: { id: string }) {
                 <CardContent sx={{ p: 3 }}>
                   <Stack spacing={2}>
                     <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                      Offer Status
+                      Offer Notes
                     </Typography>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "center" } }}>
-                      <OfferStatusChip status={offer.offer_status} />
-                      <Typography variant="body2" color="text.secondary">
-                        Current status: {OFFER_STATUS_LABELS[offer.offer_status]}
-                      </Typography>
-                      {decision ? (
-                        <Chip
-                          label={`Decision ${decision.decision_status.replaceAll("_", " ")}`}
-                          variant="outlined"
-                          sx={{ fontWeight: 800 }}
-                        />
-                      ) : null}
-                    </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      {offer.offer_status === "ACCEPTED"
+                        ? `This offer has been accepted. The candidate is expected to join on ${formatDate(offer.expected_joining_date)}.`
+                        : offer.offer_status === "SENT"
+                          ? "This offer is currently with the candidate and is awaiting a response."
+                          : offer.offer_status === "DRAFT"
+                            ? "This offer is still in draft state and can be edited before it is sent."
+                            : offer.offer_status === "EXPIRED"
+                              ? "This offer is no longer active because it has expired."
+                              : offer.offer_status === "CANCELLED"
+                                ? "This offer was cancelled and is no longer active."
+                                : "This offer was declined by the candidate."}
+                    </Typography>
 
                     {offer.offer_status === "DECLINED" && offer.decline_reason ? (
                       <Alert severity="warning">Decline reason: {offer.decline_reason}</Alert>

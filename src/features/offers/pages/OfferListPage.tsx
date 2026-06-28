@@ -34,15 +34,11 @@ import { getApiErrorMessage } from "@/utils/api-error-handler";
 import { applicationsService } from "@/features/applications/services/applications.service";
 import { candidatesService } from "@/features/candidates/services/candidates.service";
 import { jobOpeningsService } from "@/features/job-openings/services/job-openings.service";
-import { OfferSummaryCards } from "@/features/offers/components/OfferSummaryCards";
 import {
   OfferTable,
   type OfferTableRow,
 } from "@/features/offers/components/OfferTable";
 import { ConfirmDialog } from "@/features/offers/components/ConfirmDialog";
-import {
-  offerService,
-} from "@/features/offers/services/offer.service";
 import {
   useCancelOfferAction,
   useExpireOfferAction,
@@ -54,11 +50,9 @@ import {
   OFFER_SORT_FIELDS,
   OFFER_STATUSES,
   OFFER_STATUS_LABELS,
-  type ListOffersResponse,
   type OfferResponse,
   type OfferSortBy,
   type OfferStatus,
-  type OfferSummaryMetric,
 } from "@/features/offers/types/offer.types";
 
 function unwrapListRows<T>(data: unknown): T[] {
@@ -301,47 +295,6 @@ export function OfferListPage() {
     const offset = offersQuery.data as { pagination?: { total_records?: number } };
     return offset.pagination?.total_records ?? enrichedRows.length;
   }, [candidateSearch, enrichedRows.length, jobOpeningSearch, offersQuery.data]);
-
-  const summaryQueries = useQueries({
-    queries: OFFER_STATUSES.map((status) => ({
-      queryKey: ["offers", "summary", status],
-      queryFn: () => offerService.list({ page: 1, limit: 1, offer_status: status }),
-      staleTime: 60 * 1000,
-    })),
-  });
-
-  const summaryMetrics = useMemo<OfferSummaryMetric[]>(() => {
-    const tones: Record<OfferStatus, OfferSummaryMetric["tone"]> = {
-      DRAFT: "default",
-      SENT: "info",
-      ACCEPTED: "success",
-      DECLINED: "error",
-      EXPIRED: "warning",
-      CANCELLED: "error",
-    };
-
-    const summaryStatuses: OfferStatus[] = [
-      "DRAFT",
-      "SENT",
-      "ACCEPTED",
-      "DECLINED",
-      "EXPIRED",
-    ];
-
-    return summaryStatuses.map((status) => {
-      const query = summaryQueries[OFFER_STATUSES.indexOf(status)];
-      const response = query?.data as ListOffersResponse | undefined;
-      const count = response && "pagination" in response
-        ? response.pagination.total_records
-        : unwrapListRows<OfferResponse>(response).length;
-
-      return {
-        label: OFFER_STATUS_LABELS[status],
-        value: count,
-        tone: tones[status],
-      };
-    });
-  }, [summaryQueries]);
 
   const sendOfferMutation = useSendOfferAction();
   const cancelOfferMutation = useCancelOfferAction();
@@ -687,9 +640,6 @@ export function OfferListPage() {
             </Button>
           </Stack>
         </Paper>
-
-        <OfferSummaryCards metrics={summaryMetrics} />
-
         {(sendOfferMutation.isError ||
           cancelOfferMutation.isError ||
           expireOfferMutation.isError) ? (

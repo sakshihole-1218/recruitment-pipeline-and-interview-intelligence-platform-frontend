@@ -56,8 +56,8 @@ export const aiInterviewQuestionService = {
     payload: GenerateFollowUpQuestionPayload,
   ): Promise<GenerateFollowUpQuestionDetailResponse> => {
     const response = await apiClient.post<GenerateFollowUpQuestionDetailResponse>(
-      `${BASE}/generate-follow-up`,
-      payload,
+      `${BASE}/${payload.ai_interview_question_id}/generate-follow-up`,
+      undefined,
       { timeout: AI_INTERVIEW_REQUEST_TIMEOUT_MS },
     );
     return response.data;

@@ -13,7 +13,6 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  ArrowForward as NextIcon,
   KeyboardVoice as VoiceIcon,
   Send as SubmitIcon,
 } from "@mui/icons-material";
@@ -22,47 +21,95 @@ import {
   AudioRecorder,
   type RecordedAudio,
 } from "@/features/ai-interview/components/audio-recorder";
+import type {
+  AiInterviewAnswerSubmissionResult,
+  AiInterviewRoomState,
+} from "@/features/ai-interview/types/ai-interview.types";
 
 interface CandidateVoiceAnswerBoxProps {
   disabled?: boolean;
+  canRecord?: boolean;
+  canSubmit?: boolean;
+  interviewState: AiInterviewRoomState;
+  statusMessage?: string;
+  isAiSpeaking?: boolean;
+  speechWarningMessage?: string;
   submitPending?: boolean;
-  nextPending?: boolean;
-  canGoNext?: boolean;
-  onSubmitManualAnswer: (messageText: string) => Promise<void> | void;
-  onSubmitAudioAnswer: (recording: RecordedAudio) => Promise<void> | void;
-  onNextQuestion: () => Promise<void> | void;
+  hasAnsweredCurrentQuestion?: boolean;
+  onRecordingStateChange?: (isRecording: boolean) => void;
+  onTranscriptionStart?: () => void;
+  onTranscriptionSuccess?: (
+    result: AiInterviewAnswerSubmissionResult,
+  ) => void;
+  onSubmitError?: () => void;
+  onSubmitManualAnswer: (
+    messageText: string,
+  ) => Promise<AiInterviewAnswerSubmissionResult> | AiInterviewAnswerSubmissionResult;
+  onSubmitAudioAnswer: (
+    recording: RecordedAudio,
+  ) => Promise<AiInterviewAnswerSubmissionResult> | AiInterviewAnswerSubmissionResult;
 }
 
 export function CandidateVoiceAnswerBox({
   disabled,
+  canRecord = true,
+  canSubmit = true,
+  interviewState,
+  statusMessage,
+  isAiSpeaking,
+  speechWarningMessage,
   submitPending,
-  nextPending,
-  canGoNext,
+  hasAnsweredCurrentQuestion,
+  onRecordingStateChange,
+  onTranscriptionStart,
+  onTranscriptionSuccess,
+  onSubmitError,
   onSubmitManualAnswer,
   onSubmitAudioAnswer,
-  onNextQuestion,
 }: CandidateVoiceAnswerBoxProps) {
   const [messageText, setMessageText] = useState("");
   const [recording, setRecording] = useState<RecordedAudio | null>(null);
   const [resetToken, setResetToken] = useState(0);
+  const [warningMessage, setWarningMessage] = useState("");
+
+  const activeSpeechWarningMessage =
+    speechWarningMessage ||
+    "Please wait until the AI interviewer finishes speaking before starting the recording.";
 
   const handleSubmitManual = async () => {
     const trimmed = messageText.trim();
-    if (!trimmed || disabled || submitPending || canGoNext) {
+    if (!trimmed || disabled || submitPending || !canSubmit) {
       return;
     }
 
-    await onSubmitManualAnswer(trimmed);
-    setMessageText("");
+    onTranscriptionStart?.();
+
+    try {
+      const result = await onSubmitManualAnswer(trimmed);
+      onTranscriptionSuccess?.(result);
+      setMessageText("");
+    } catch (error) {
+      onSubmitError?.();
+      throw error;
+    }
   };
 
   const handleSubmitAudio = async () => {
-    if (!recording || disabled || submitPending || canGoNext) {
+    if (!recording || disabled || submitPending || !canSubmit) {
       return;
     }
 
-    await onSubmitAudioAnswer(recording);
-    setResetToken((current) => current + 1);
+    onTranscriptionStart?.();
+
+    try {
+      const result = await onSubmitAudioAnswer(recording);
+      onTranscriptionSuccess?.(result);
+      setResetToken((current) => current + 1);
+      setRecording(null);
+    } catch (error) {
+      onSubmitError?.();
+      throw error;
+    }
   };
 
   return (
@@ -85,10 +132,19 @@ export function CandidateVoiceAnswerBox({
             </Typography>
           </Box>
 
+          {statusMessage ? <Alert severity="info">{statusMessage}</Alert> : null}
+
           <AudioRecorder
             key={resetToken}
-            disabled={disabled || submitPending || Boolean(canGoNext)}
-            onRecordingChange={setRecording}
+            disabled={disabled || submitPending || !canRecord}
+            recordingBlocked={Boolean(isAiSpeaking)}
+            recordingBlockedMessage={activeSpeechWarningMessage}
+            onRecordingChange={(nextRecording) => {
+              setRecording(nextRecording);
+              onRecordingStateChange?.(false);
+            }}
+            onRecordingBlocked={() => setWarningMessage(activeSpeechWarningMessage)}
+            onRecordingStateChange={onRecordingStateChange}
           />
 
           <Stack
@@ -100,27 +156,22 @@ export function CandidateVoiceAnswerBox({
               variant="contained"
               startIcon={<VoiceIcon />}
               onClick={handleSubmitAudio}
-              disabled={disabled || submitPending || !recording || Boolean(canGoNext)}
+              disabled={disabled || submitPending || !recording || !canSubmit}
               sx={{ borderRadius: 2, fontWeight: 900, minWidth: 200 }}
             >
-              {submitPending ? "Submitting..." : "Submit Audio Answer"}
-            </Button>
-
-            <Button
-              variant="contained"
-              color="secondary"
-              startIcon={<NextIcon />}
-              onClick={onNextQuestion}
-              disabled={!canGoNext || nextPending}
-              sx={{ borderRadius: 2, fontWeight: 900, minWidth: 180 }}
-            >
-              {nextPending ? "Loading..." : "Next Question"}
+              {submitPending ? "Uploading..." : "Submit Audio Answer"}
             </Button>
           </Stack>
 
-          {canGoNext ? (
+          {hasAnsweredCurrentQuestion ? (
             <Alert severity="success">
-              Answer saved. The transcript has been refreshed and you can move to the next question.
+              This question already has a candidate answer transcript. The interview will continue with the next unanswered question.
+            </Alert>
+          ) : null}
+
+          {!hasAnsweredCurrentQuestion && warningMessage ? (
+            <Alert severity="warning" onClose={() => setWarningMessage("")}>
+              {warningMessage}
             </Alert>
           ) : null}
 
@@ -143,8 +194,13 @@ export function CandidateVoiceAnswerBox({
               fullWidth
               placeholder="Type the candidate answer here..."
               value={messageText}
-              onChange={(event) => setMessageText(event.target.value)}
-              disabled={disabled || submitPending || Boolean(canGoNext)}
+              onChange={(event) => {
+                if (warningMessage) {
+                  setWarningMessage("");
+                }
+                setMessageText(event.target.value);
+              }}
+              disabled={disabled || submitPending || !canSubmit}
             />
 
             <Button
@@ -155,7 +211,8 @@ export function CandidateVoiceAnswerBox({
                 disabled ||
                 submitPending ||
                 !messageText.trim() ||
-                Boolean(canGoNext)
+                !canSubmit ||
+                interviewState === "RECORDING"
               }
               sx={{ borderRadius: 2, fontWeight: 900, minWidth: 180, alignSelf: "flex-start" }}
             >

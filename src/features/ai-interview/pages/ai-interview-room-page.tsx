@@ -1,7 +1,7 @@
 "use client";
 
 import { AxiosError } from "axios";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -41,8 +41,13 @@ import {
   useEnsureAiInterviewSession,
   useStartAiInterviewSession,
 } from "@/features/ai-interview/hooks/use-ai-interview";
+import { useBrowserTextToSpeech } from "@/features/ai-interview/hooks/useBrowserTextToSpeech";
 import { useGenerateInterviewPlan } from "@/features/ai-interview/hooks/use-interview-questions";
-import type { AiInterviewSessionResponse } from "@/features/ai-interview/types/ai-interview.types";
+import type {
+  AiInterviewAnswerSubmissionResult,
+  AiInterviewRoomState,
+  AiInterviewSessionResponse,
+} from "@/features/ai-interview/types/ai-interview.types";
 import { useCandidate } from "@/features/candidates/hooks/use-candidates";
 import { useInterview } from "@/features/interviews/hooks/use-interviews";
 import { useJobOpening } from "@/features/job-openings/hooks/use-job-openings";
@@ -65,12 +70,80 @@ function getApiErrorCode(error: unknown): string | undefined {
   return undefined;
 }
 
+const INTERVIEW_STATE_COPY: Record<
+  AiInterviewRoomState,
+  { label: string; description: string; answerBoxMessage: string }
+> = {
+  AI_SPEAKING: {
+    label: "Question playing",
+    description: "Please listen to the current question.",
+    answerBoxMessage:
+      "Please wait for the question to finish playing before recording the answer.",
+  },
+  WAITING_FOR_ANSWER: {
+    label: "Ready for answer",
+    description: "You can now record and submit your answer.",
+    answerBoxMessage:
+      "Recording is enabled. Submit the answer once you finish speaking.",
+  },
+  RECORDING: {
+    label: "Recording",
+    description: "Your answer is being recorded.",
+    answerBoxMessage:
+      "Recording is in progress. Stop recording when you finish speaking.",
+  },
+  TRANSCRIBING: {
+    label: "Processing answer",
+    description: "Your answer is being processed.",
+    answerBoxMessage:
+      "Please wait while your answer is processed.",
+  },
+  GENERATING_FOLLOWUP: {
+    label: "Preparing next question",
+    description: "We are preparing the next question.",
+    answerBoxMessage:
+      "Please wait while the next question is prepared.",
+  },
+  FOLLOWUP_READY: {
+    label: "Next question ready",
+    description: "The next question is ready and will start automatically.",
+    answerBoxMessage:
+      "The next question is ready and will start automatically.",
+  },
+  MOVING_NEXT: {
+    label: "Loading next question",
+    description: "Your answer was saved. Moving to the next question.",
+    answerBoxMessage:
+      "Your answer was saved. Moving to the next question automatically.",
+  },
+  COMPLETED: {
+    label: "Interview completed",
+    description: "All questions are complete. You can now finish the interview.",
+    answerBoxMessage:
+      "All questions are complete. Review the transcript and end the interview when ready.",
+  },
+};
+
+function logInterviewEvent(event: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
+  if (details) {
+    console.debug(`[AI Interview] ${event}`, details);
+    return;
+  }
+
+  console.debug(`[AI Interview] ${event}`);
+}
+
 export function AiInterviewRoomPage({ id }: { id: string }) {
   const router = useRouter();
   const { snackbar, showError, closeSnackbar } = useSnackbar();
   const hasStartedSessionRef = useRef(false);
   const generatedPlanSessionIdRef = useRef<string | null>(null);
-  const [isQuestionPlanReady, setIsQuestionPlanReady] = useState(false);
+  const [questionPlanReadySessionId, setQuestionPlanReadySessionId] = useState<string | null>(null);
+  const [questionPlanError, setQuestionPlanError] = useState("");
 
   const interviewQuery = useInterview(id);
   const interview = interviewQuery.data?.data;
@@ -100,14 +173,7 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
     if (!aiSession) {
       hasStartedSessionRef.current = false;
       generatedPlanSessionIdRef.current = null;
-      setIsQuestionPlanReady(false);
       return;
-    }
-
-    if (aiSession.question_generation_status === "COMPLETED") {
-      setIsQuestionPlanReady(true);
-    } else if (generatedPlanSessionIdRef.current !== aiSession.id) {
-      setIsQuestionPlanReady(false);
     }
 
     if (aiSession.session_status === "IN_PROGRESS") {
@@ -138,7 +204,10 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
     }
 
     if (aiSession.question_generation_status === "COMPLETED") {
-      setIsQuestionPlanReady(true);
+      return;
+    }
+
+    if (aiSession.question_generation_status === "FAILED") {
       return;
     }
 
@@ -157,7 +226,8 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
 
     generateInterviewPlanMutation.mutate(undefined, {
       onSuccess: async () => {
-        setIsQuestionPlanReady(true);
+        setQuestionPlanError("");
+        setQuestionPlanReadySessionId(aiSession.id);
         await aiSessionQuery.refetch();
       },
       onError: async (error) => {
@@ -167,16 +237,28 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
           errorCode === "AI_INTERVIEW_QUESTIONS_ALREADY_EXIST" ||
           errorCode === "AI_INTERVIEW_PLAN_ALREADY_GENERATED"
         ) {
-          setIsQuestionPlanReady(true);
+          setQuestionPlanError("");
+          setQuestionPlanReadySessionId(aiSession.id);
           await aiSessionQuery.refetch();
           return;
         }
 
-        generatedPlanSessionIdRef.current = null;
-        showError(getApiErrorMessage(error));
+        const message = getApiErrorMessage(error);
+        setQuestionPlanError(message);
+        showError(message);
       },
     });
   }, [aiSession, aiSessionQuery, generateInterviewPlanMutation, showError]);
+
+  const handleRetryQuestionPlan = async () => {
+    if (!aiSession) {
+      return;
+    }
+
+    generatedPlanSessionIdRef.current = null;
+    setQuestionPlanError("");
+    await aiSessionQuery.refetch();
+  };
 
   const handleEndInterview = async () => {
     const sessionId = aiSession?.id;
@@ -201,7 +283,17 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
     (aiSessionQuery.isError && getApiErrorMessage(aiSessionQuery.error)) ||
     (startSessionMutation.isError &&
       getApiErrorMessage(startSessionMutation.error)) ||
+    (aiSession?.question_generation_status === "FAILED"
+      ? "Interview question setup failed for this session. Please retry question setup."
+      : "") ||
+    questionPlanError ||
     "";
+
+  const isQuestionPlanReady = Boolean(
+    aiSession &&
+      (aiSession.question_generation_status === "COMPLETED" ||
+        questionPlanReadySessionId === aiSession.id),
+  );
 
   const isPreparing =
     interviewQuery.isLoading ||
@@ -246,6 +338,15 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
               >
                 Back to Lobby
               </Button>
+              {questionPlanError ? (
+                <Button
+                  variant="contained"
+                  onClick={handleRetryQuestionPlan}
+                  sx={{ alignSelf: "flex-start", borderRadius: 2, fontWeight: 800 }}
+                >
+                  Retry Question Setup
+                </Button>
+              ) : null}
             </Stack>
           </CardContent>
         </Card>
@@ -288,6 +389,200 @@ function AiInterviewRoomContent({
   endPending: boolean;
 }) {
   const engine = useInterviewEngine();
+  const questionSpeech = useBrowserTextToSpeech();
+  const {
+    isPaused,
+    isSpeaking,
+    isSupported,
+    pause,
+    resume,
+    speak,
+    stop,
+  } = questionSpeech;
+  const [interviewState, setInterviewState] = useState<AiInterviewRoomState>("WAITING_FOR_ANSWER");
+  const autoSpokenQuestionIdsRef = useRef<Set<string>>(new Set());
+  const activeSpeechQuestionIdRef = useRef<string | null>(null);
+
+  const speakQuestion = useCallback(
+    (questionId: string, questionText: string) => {
+      logInterviewEvent("Speak question requested", {
+        questionId,
+        preview: questionText.slice(0, 80),
+      });
+      activeSpeechQuestionIdRef.current = questionId;
+
+      if (!isSupported || !questionText.trim()) {
+        setInterviewState("WAITING_FOR_ANSWER");
+        return;
+      }
+
+      setInterviewState("AI_SPEAKING");
+      stop();
+      speak(questionText, {
+        onStart: () => {
+          if (activeSpeechQuestionIdRef.current === questionId) {
+            logInterviewEvent("Question playback started", { questionId });
+            setInterviewState("AI_SPEAKING");
+          }
+        },
+        onEnd: () => {
+          if (activeSpeechQuestionIdRef.current === questionId && !engine.isCompleted) {
+            logInterviewEvent("Question playback ended", { questionId });
+            setInterviewState("WAITING_FOR_ANSWER");
+          }
+        },
+        onError: () => {
+          if (activeSpeechQuestionIdRef.current === questionId && !engine.isCompleted) {
+            logInterviewEvent("Question playback errored", { questionId });
+            setInterviewState("WAITING_FOR_ANSWER");
+          }
+        },
+      });
+    },
+    [engine.isCompleted, isSupported, speak, stop],
+  );
+
+  useEffect(() => {
+    return () => {
+      activeSpeechQuestionIdRef.current = null;
+      stop();
+    };
+  }, [stop]);
+
+  useEffect(() => {
+    if (engine.isCompleted) {
+      activeSpeechQuestionIdRef.current = null;
+      stop();
+      return;
+    }
+
+    if (!engine.currentQuestion) {
+      return;
+    }
+
+    if (
+      interviewState === "TRANSCRIBING" ||
+      interviewState === "GENERATING_FOLLOWUP"
+    ) {
+      return;
+    }
+
+    if (autoSpokenQuestionIdsRef.current.has(engine.currentQuestion.id)) {
+      return;
+    }
+
+    autoSpokenQuestionIdsRef.current.add(engine.currentQuestion.id);
+    speakQuestion(engine.currentQuestion.id, engine.currentQuestion.question_text);
+  }, [
+    engine.currentQuestion,
+    engine.currentQuestionHasCandidateAnswer,
+    engine.isCompleted,
+    interviewState,
+    isPaused,
+    isSpeaking,
+    speakQuestion,
+    stop,
+  ]);
+
+  const handleReplayQuestion = useCallback(() => {
+    if (!engine.currentQuestion) {
+      return;
+    }
+
+    logInterviewEvent("Replay question", {
+      questionId: engine.currentQuestion.id,
+    });
+    speakQuestion(engine.currentQuestion.id, engine.currentQuestion.question_text);
+  }, [engine.currentQuestion, speakQuestion]);
+
+  const handleRecordingStateChange = useCallback(
+    (isRecording: boolean) => {
+      logInterviewEvent("Recording state changed", { isRecording });
+      if (isRecording) {
+        setInterviewState("RECORDING");
+        return;
+      }
+
+      setInterviewState((currentState) =>
+        currentState === "RECORDING" ? "WAITING_FOR_ANSWER" : currentState,
+      );
+    },
+    [],
+  );
+
+  const handleTranscriptionStart = useCallback(() => {
+    logInterviewEvent("Answer submission started");
+    setInterviewState("TRANSCRIBING");
+  }, []);
+
+  const handleTranscriptionError = useCallback(() => {
+    logInterviewEvent("Answer submission failed");
+    setInterviewState("WAITING_FOR_ANSWER");
+  }, []);
+
+  const handleAnswerProcessed = useCallback(
+    (result: AiInterviewAnswerSubmissionResult) => {
+      logInterviewEvent("Answer processed", {
+        nextStep: result.nextStep,
+        generatedFollowUpQuestionId: result.generatedFollowUpQuestionId,
+      });
+      if (result.nextStep === "FOLLOWUP_READY") {
+        setInterviewState("FOLLOWUP_READY");
+        return;
+      }
+
+      if (result.nextStep === "COMPLETED") {
+        setInterviewState("COMPLETED");
+        return;
+      }
+
+      setInterviewState("MOVING_NEXT");
+    },
+    [],
+  );
+
+  const effectiveInterviewState = engine.isCompleted
+    ? "COMPLETED"
+    : engine.isGeneratingFollowUp
+      ? "GENERATING_FOLLOWUP"
+      : engine.currentQuestionHasCandidateAnswer
+      ? "MOVING_NEXT"
+      : interviewState;
+  const stateCopy = INTERVIEW_STATE_COPY[effectiveInterviewState];
+  useEffect(() => {
+    logInterviewEvent("Interview state changed", {
+      state: effectiveInterviewState,
+      questionId: engine.currentQuestion?.id ?? null,
+      rootQuestionIndex: engine.rootQuestionIndex,
+      followUpDepth: engine.currentFollowUpDepth,
+      answeredQuestions: engine.answeredQuestions,
+      totalQuestions: engine.totalQuestions,
+    });
+  }, [
+    effectiveInterviewState,
+    engine.answeredQuestions,
+    engine.currentFollowUpDepth,
+    engine.currentQuestion?.id,
+    engine.rootQuestionIndex,
+    engine.totalQuestions,
+  ]);
+  const isRecordingDisabled =
+    !engine.currentQuestion ||
+    effectiveInterviewState === "AI_SPEAKING" ||
+    effectiveInterviewState === "TRANSCRIBING" ||
+    effectiveInterviewState === "GENERATING_FOLLOWUP" ||
+    effectiveInterviewState === "FOLLOWUP_READY" ||
+    effectiveInterviewState === "MOVING_NEXT" ||
+    effectiveInterviewState === "COMPLETED";
+  const canSubmitAnswer =
+    Boolean(engine.currentQuestion) &&
+    !engine.currentQuestionHasCandidateAnswer &&
+    effectiveInterviewState !== "AI_SPEAKING" &&
+    effectiveInterviewState !== "TRANSCRIBING" &&
+    effectiveInterviewState !== "GENERATING_FOLLOWUP" &&
+    effectiveInterviewState !== "FOLLOWUP_READY" &&
+    effectiveInterviewState !== "MOVING_NEXT" &&
+    effectiveInterviewState !== "COMPLETED";
 
   if (engine.errorMessage) {
     return (
@@ -379,8 +674,20 @@ function AiInterviewRoomContent({
             currentQuestion={engine.currentQuestion}
             currentQuestionIndex={engine.rootQuestionIndex}
             totalQuestions={engine.totalQuestions}
+            answeredQuestions={engine.answeredQuestions}
             currentQuestionLabel={engine.currentQuestionLabel}
+            currentFollowUpDepth={engine.currentFollowUpDepth}
             isFollowUp={engine.isCurrentQuestionFollowUp}
+            interviewState={effectiveInterviewState}
+            interviewStateLabel={stateCopy.label}
+            interviewStateDescription={stateCopy.description}
+            isSpeechSupported={isSupported}
+            isSpeaking={isSpeaking}
+            isPaused={isPaused}
+            onReplayQuestion={handleReplayQuestion}
+            onStopSpeaking={stop}
+            onPauseSpeaking={pause}
+            onResumeSpeaking={resume}
           />
           <QuestionContextCard
             currentQuestion={engine.currentQuestion}
@@ -395,18 +702,28 @@ function AiInterviewRoomContent({
       </Box>
 
       <CandidateVoiceAnswerBox
-        disabled={!engine.currentQuestion || engine.isBusy}
+        disabled={!engine.currentQuestion || engine.isBusy || effectiveInterviewState === "COMPLETED"}
+        canRecord={!isRecordingDisabled}
+        canSubmit={canSubmitAnswer}
+        interviewState={effectiveInterviewState}
+        statusMessage={stateCopy.answerBoxMessage}
+        isAiSpeaking={isSpeaking || isPaused}
+        speechWarningMessage="Please wait until the AI interviewer finishes speaking before starting the recording."
         submitPending={engine.isBusy}
-        nextPending={engine.isBusy}
-        canGoNext={engine.canAdvanceToNextQuestion}
+        hasAnsweredCurrentQuestion={engine.currentQuestionHasCandidateAnswer}
+        onRecordingStateChange={handleRecordingStateChange}
+        onTranscriptionStart={handleTranscriptionStart}
+        onTranscriptionSuccess={handleAnswerProcessed}
+        onSubmitError={handleTranscriptionError}
         onSubmitManualAnswer={engine.submitAnswer}
         onSubmitAudioAnswer={engine.submitAudioAnswer}
-        onNextQuestion={engine.advanceToNextQuestion}
       />
 
       <InterviewFooterControls
         onEndInterview={onEndInterview}
         endPending={endPending}
+        onStopSpeaking={stop}
+        isCompleted={engine.isCompleted}
       />
     </Stack>
   );
@@ -445,9 +762,13 @@ function InterviewRoomLoadingState({
 function InterviewFooterControls({
   onEndInterview,
   endPending,
+  onStopSpeaking,
+  isCompleted,
 }: {
   onEndInterview: () => Promise<void>;
   endPending: boolean;
+  onStopSpeaking: () => void;
+  isCompleted: boolean;
 }) {
   return (
     <Stack
@@ -465,11 +786,18 @@ function InterviewFooterControls({
       <Button
         variant="contained"
         color="error"
-        onClick={onEndInterview}
+        onClick={async () => {
+          onStopSpeaking();
+          await onEndInterview();
+        }}
         disabled={endPending}
         sx={{ borderRadius: 2, fontWeight: 900, minWidth: 180 }}
       >
-        {endPending ? "Ending..." : "End Interview"}
+        {endPending
+          ? "Ending..."
+          : isCompleted
+            ? "Finish Interview"
+            : "End Interview Early"}
       </Button>
     </Stack>
   );

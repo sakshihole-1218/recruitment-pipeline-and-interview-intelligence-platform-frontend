@@ -32,9 +32,12 @@ import type { RecordedAudio } from "@/features/ai-interview/components/audio-rec
 import { getApiErrorMessage } from "@/utils/api-error-handler";
 
 interface InterviewEngineContextValue {
+  questions: AiInterviewQuestionResponse[];
   currentQuestion: AiInterviewQuestionResponse | null;
   currentQuestionLabel: string;
   currentFollowUpDepth: number;
+  currentFollowUpPosition: number;
+  maxFollowUpsPerQuestion: number;
   isCurrentQuestionFollowUp: boolean;
   rootQuestionIndex: number;
   rootQuestions: AiInterviewQuestionResponse[];
@@ -59,6 +62,8 @@ interface InterviewEngineContextValue {
 const InterviewEngineContext = createContext<InterviewEngineContextValue | null>(
   null,
 );
+
+const MAX_FOLLOW_UPS_PER_QUESTION = 2;
 
 interface InterviewEngineProviderProps {
   sessionId: string;
@@ -184,6 +189,24 @@ function getFollowUpDepth(
   return depth;
 }
 
+function getRootFollowUpCount(
+  rootQuestionId: string | null,
+  questions: AiInterviewQuestionResponse[],
+  questionById: Map<string, AiInterviewQuestionResponse>,
+) {
+  if (!rootQuestionId) {
+    return 0;
+  }
+
+  return questions.filter((question) => {
+    if (!question.parent_question_id) {
+      return false;
+    }
+
+    return resolveRootQuestionId(question, questionById) === rootQuestionId;
+  }).length;
+}
+
 function getNextStepAfterRefresh(
   questions: AiInterviewQuestionResponse[],
   transcriptEntries: AiInterviewTranscriptEntryResponse[],
@@ -283,6 +306,7 @@ export function InterviewEngineProvider({
     () => getFollowUpDepth(currentQuestion, questionById),
     [currentQuestion, questionById],
   );
+  const currentFollowUpPosition = currentFollowUpDepth;
 
   const answeredQuestions = useMemo(
     () =>
@@ -340,12 +364,28 @@ export function InterviewEngineProvider({
       question: AiInterviewQuestionResponse,
       candidateAnswer: string,
     ) => {
+      const normalizedAnswer = candidateAnswer.trim();
+      const rootQuestionId = resolveRootQuestionId(question, questionById);
+      const rootFollowUpCount = getRootFollowUpCount(
+        rootQuestionId,
+        questions,
+        questionById,
+      );
+
+      if (!normalizedAnswer || rootFollowUpCount >= MAX_FOLLOW_UPS_PER_QUESTION) {
+        const refreshedData = await refreshInterviewData();
+
+        return {
+          nextStep: getNextStepAfterRefresh(
+            refreshedData.questions,
+            refreshedData.transcriptEntries,
+          ),
+          generatedFollowUpQuestionId: null,
+        };
+      }
+
       try {
-        const response = await generateFollowUpMutation.mutateAsync({
-          ai_interview_session_id: sessionId,
-          ai_interview_question_id: question.id,
-          candidate_answer: candidateAnswer,
-        });
+        const response = await generateFollowUpMutation.mutateAsync(question.id);
 
         await refreshInterviewData();
 
@@ -370,7 +410,13 @@ export function InterviewEngineProvider({
         };
       }
     },
-    [generateFollowUpMutation, onError, refreshInterviewData, sessionId],
+    [
+      generateFollowUpMutation,
+      onError,
+      questionById,
+      questions,
+      refreshInterviewData,
+    ],
   );
 
   const submitAnswer = useCallback(
@@ -530,9 +576,12 @@ export function InterviewEngineProvider({
 
   const value = useMemo<InterviewEngineContextValue>(
     () => ({
+      questions,
       currentQuestion,
       currentQuestionLabel,
       currentFollowUpDepth,
+      currentFollowUpPosition,
+      maxFollowUpsPerQuestion: MAX_FOLLOW_UPS_PER_QUESTION,
       isCurrentQuestionFollowUp,
       rootQuestionIndex,
       rootQuestions,
@@ -558,6 +607,7 @@ export function InterviewEngineProvider({
       answeredQuestions,
       createTranscriptMutation.isPending,
       currentFollowUpDepth,
+      currentFollowUpPosition,
       currentQuestion,
       currentQuestionHasCandidateAnswer,
       currentQuestionLabel,
@@ -567,6 +617,7 @@ export function InterviewEngineProvider({
       isCurrentQuestionFollowUp,
       markQuestionAnsweredMutation.isPending,
       markQuestionAskedMutation.isPending,
+      questions,
       progressPercent,
       questionsQuery.isLoading,
       rootQuestionIndex,

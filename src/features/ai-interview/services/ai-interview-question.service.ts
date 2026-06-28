@@ -4,7 +4,6 @@ import type {
   AiInterviewQuestionDetailResponse,
   AiInterviewQuestionsBySessionResponse,
   GenerateFollowUpQuestionDetailResponse,
-  GenerateFollowUpQuestionPayload,
 } from "@/features/ai-interview/types/ai-interview.types";
 
 const BASE = "/ai-interview-questions";
@@ -53,10 +52,10 @@ export const aiInterviewQuestionService = {
   },
 
   generateFollowUp: async (
-    payload: GenerateFollowUpQuestionPayload,
+    questionId: string,
   ): Promise<GenerateFollowUpQuestionDetailResponse> => {
     const response = await apiClient.post<GenerateFollowUpQuestionDetailResponse>(
-      `${BASE}/${payload.ai_interview_question_id}/generate-follow-up`,
+      `${BASE}/${questionId}/generate-follow-up`,
       undefined,
       { timeout: AI_INTERVIEW_REQUEST_TIMEOUT_MS },
     );

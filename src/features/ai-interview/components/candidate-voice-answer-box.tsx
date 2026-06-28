@@ -133,6 +133,11 @@ export function CandidateVoiceAnswerBox({
           </Box>
 
           {statusMessage ? <Alert severity="info">{statusMessage}</Alert> : null}
+          {interviewState === "GENERATING_FOLLOWUP" ? (
+            <Alert severity="info">
+              AI is analyzing your answer and deciding whether a follow-up question is needed.
+            </Alert>
+          ) : null}
 
           <AudioRecorder
             key={resetToken}
@@ -159,7 +164,11 @@ export function CandidateVoiceAnswerBox({
               disabled={disabled || submitPending || !recording || !canSubmit}
               sx={{ borderRadius: 2, fontWeight: 900, minWidth: 200 }}
             >
-              {submitPending ? "Uploading..." : "Submit Audio Answer"}
+              {submitPending
+                ? interviewState === "GENERATING_FOLLOWUP"
+                  ? "Analyzing Answer..."
+                  : "Uploading..."
+                : "Submit Audio Answer"}
             </Button>
           </Stack>
 
@@ -216,7 +225,11 @@ export function CandidateVoiceAnswerBox({
               }
               sx={{ borderRadius: 2, fontWeight: 900, minWidth: 180, alignSelf: "flex-start" }}
             >
-              {submitPending ? "Submitting..." : "Submit Manual Answer"}
+              {submitPending
+                ? interviewState === "GENERATING_FOLLOWUP"
+                  ? "Analyzing Answer..."
+                  : "Submitting..."
+                : "Submit Manual Answer"}
             </Button>
           </Stack>
         </Stack>

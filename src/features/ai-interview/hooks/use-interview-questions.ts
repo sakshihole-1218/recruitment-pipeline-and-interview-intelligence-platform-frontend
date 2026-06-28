@@ -6,7 +6,6 @@ import { aiInterviewQuestionService } from "@/features/ai-interview/services/ai-
 import type {
   AiInterviewQuestionResponse,
   AiInterviewQuestionsBySessionResponse,
-  GenerateFollowUpQuestionPayload,
 } from "@/features/ai-interview/types/ai-interview.types";
 
 export const AI_INTERVIEW_QUESTIONS_QUERY_KEYS = {
@@ -75,8 +74,8 @@ export function useGenerateFollowUpQuestion(sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: GenerateFollowUpQuestionPayload) =>
-      aiInterviewQuestionService.generateFollowUp(payload),
+    mutationFn: (questionId: string) =>
+      aiInterviewQuestionService.generateFollowUp(questionId),
     onSuccess: (response) => {
       queryClient.setQueryData<AiInterviewQuestionsBySessionResponse | undefined>(
         AI_INTERVIEW_QUESTIONS_QUERY_KEYS.session(sessionId),

@@ -99,10 +99,10 @@ const INTERVIEW_STATE_COPY: Record<
       "Please wait while your answer is processed.",
   },
   GENERATING_FOLLOWUP: {
-    label: "Preparing next question",
-    description: "We are preparing the next question.",
+    label: "Analyzing answer",
+    description: "AI is analyzing the latest answer and checking for a follow-up question.",
     answerBoxMessage:
-      "Please wait while the next question is prepared.",
+      "AI is analyzing your answer. Recording is temporarily disabled.",
   },
   FOLLOWUP_READY: {
     label: "Next question ready",
@@ -676,7 +676,8 @@ function AiInterviewRoomContent({
             totalQuestions={engine.totalQuestions}
             answeredQuestions={engine.answeredQuestions}
             currentQuestionLabel={engine.currentQuestionLabel}
-            currentFollowUpDepth={engine.currentFollowUpDepth}
+            currentFollowUpPosition={engine.currentFollowUpPosition}
+            maxFollowUpsPerQuestion={engine.maxFollowUpsPerQuestion}
             isFollowUp={engine.isCurrentQuestionFollowUp}
             interviewState={effectiveInterviewState}
             interviewStateLabel={stateCopy.label}
@@ -697,7 +698,10 @@ function AiInterviewRoomContent({
         </Stack>
 
         <Box sx={{ minWidth: 0, minHeight: 0 }}>
-          <TranscriptPanel transcriptEntries={engine.transcriptEntries} />
+          <TranscriptPanel
+            questions={engine.questions}
+            transcriptEntries={engine.transcriptEntries}
+          />
         </Box>
       </Box>
 

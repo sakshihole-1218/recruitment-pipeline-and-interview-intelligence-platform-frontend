@@ -6,14 +6,19 @@ import {
   Box,
   Card,
   CardContent,
+  Chip,
   Stack,
   Typography,
 } from "@mui/material";
 import { SubtitlesOutlined as TranscriptIcon } from "@mui/icons-material";
 
-import type { AiInterviewTranscriptEntryResponse } from "@/features/ai-interview/types/ai-interview.types";
+import type {
+  AiInterviewQuestionResponse,
+  AiInterviewTranscriptEntryResponse,
+} from "@/features/ai-interview/types/ai-interview.types";
 
 interface TranscriptPanelProps {
+  questions: AiInterviewQuestionResponse[];
   transcriptEntries: AiInterviewTranscriptEntryResponse[];
 }
 
@@ -29,12 +34,31 @@ function getBubbleAlignment(
   return speakerType === "CANDIDATE" ? "flex-end" : "flex-start";
 }
 
-export function TranscriptPanel({ transcriptEntries }: TranscriptPanelProps) {
+export function TranscriptPanel({
+  questions,
+  transcriptEntries,
+}: TranscriptPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const questionById = new Map(questions.map((question) => [question.id, question]));
+
+  const orderedTranscriptEntries = transcriptEntries.filter((entry, index, entries) => {
+    if (entry.speaker_type !== "AI_INTERVIEWER" || !entry.ai_interview_question_id) {
+      return true;
+    }
+
+    return (
+      entries.findIndex(
+        (candidate) =>
+          candidate.speaker_type === "AI_INTERVIEWER" &&
+          candidate.ai_interview_question_id === entry.ai_interview_question_id &&
+          candidate.message_text.trim() === entry.message_text.trim(),
+      ) === index
+    );
+  });
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [transcriptEntries]);
+  }, [orderedTranscriptEntries]);
 
   return (
     <Card
@@ -70,8 +94,13 @@ export function TranscriptPanel({ transcriptEntries }: TranscriptPanelProps) {
               pr: 1,
             }}
           >
-            {transcriptEntries.length ? (
-              transcriptEntries.map((entry) => (
+            {orderedTranscriptEntries.length ? (
+              orderedTranscriptEntries.map((entry) => {
+                const relatedQuestion = entry.ai_interview_question_id
+                  ? questionById.get(entry.ai_interview_question_id) ?? null
+                  : null;
+
+                return (
                 <Stack
                   key={entry.id}
                   spacing={0.75}
@@ -120,6 +149,15 @@ export function TranscriptPanel({ transcriptEntries }: TranscriptPanelProps) {
                       >
                         {getSpeakerLabel(entry.speaker_type)}
                       </Typography>
+                      {relatedQuestion?.is_follow_up ? (
+                        <Chip
+                          size="small"
+                          label="Follow-up"
+                          color="warning"
+                          variant="outlined"
+                          sx={{ mb: 0.75 }}
+                        />
+                      ) : null}
                       <Typography variant="body2">{entry.message_text}</Typography>
                     </Box>
 
@@ -130,7 +168,8 @@ export function TranscriptPanel({ transcriptEntries }: TranscriptPanelProps) {
                     ) : null}
                   </Stack>
                 </Stack>
-              ))
+                );
+              })
             ) : (
               <Box
                 sx={{

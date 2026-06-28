@@ -15,7 +15,8 @@ interface CurrentQuestionPanelProps {
   totalQuestions: number;
   answeredQuestions: number;
   currentQuestionLabel: string;
-  currentFollowUpDepth: number;
+  currentFollowUpPosition: number;
+  maxFollowUpsPerQuestion: number;
   isFollowUp: boolean;
   interviewState: AiInterviewRoomState;
   interviewStateLabel: string;
@@ -35,7 +36,8 @@ export function CurrentQuestionPanel({
   totalQuestions,
   answeredQuestions,
   currentQuestionLabel,
-  currentFollowUpDepth,
+  currentFollowUpPosition,
+  maxFollowUpsPerQuestion,
   isFollowUp,
   interviewState,
   interviewStateLabel,
@@ -84,12 +86,12 @@ export function CurrentQuestionPanel({
               {isFollowUp ? (
                 <Chip
                   label={
-                    currentFollowUpDepth > 0
-                      ? `Follow-Up ${currentFollowUpDepth}`
+                    currentFollowUpPosition > 0
+                      ? `Follow-Up ${currentFollowUpPosition} of ${maxFollowUpsPerQuestion}`
                       : "Follow-Up"
                   }
                   color="warning"
-                  variant="filled"
+                  variant="outlined"
                 />
               ) : null}
               <Chip
@@ -112,7 +114,7 @@ export function CurrentQuestionPanel({
             <>
               <Typography variant="body2" color="text.secondary">
                 {isFollowUp
-                  ? `${currentQuestionLabel} • Follow-Up ${currentFollowUpDepth}`
+                  ? `${currentQuestionLabel} - Follow-Up ${currentFollowUpPosition} of ${maxFollowUpsPerQuestion}`
                   : currentQuestionLabel}
               </Typography>
               <AiQuestionSpeaker
@@ -130,7 +132,11 @@ export function CurrentQuestionPanel({
                 <Chip label={currentQuestion.topic} variant="outlined" />
                 <Chip label={currentQuestion.difficulty_level} variant="outlined" />
                 <Chip
-                  label={isFollowUp ? `FOLLOW-UP ${currentFollowUpDepth}` : currentQuestion.question_type}
+                  label={
+                    isFollowUp
+                      ? `FOLLOW-UP ${currentFollowUpPosition} OF ${maxFollowUpsPerQuestion}`
+                      : currentQuestion.question_type
+                  }
                   color={isFollowUp ? "warning" : "default"}
                   variant="outlined"
                 />

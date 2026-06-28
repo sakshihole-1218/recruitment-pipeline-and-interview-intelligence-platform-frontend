@@ -162,12 +162,6 @@ export interface AiInterviewQuestionResponse {
   deleted_by_user_id: string | null;
 }
 
-export interface GenerateFollowUpQuestionPayload {
-  ai_interview_session_id: string;
-  ai_interview_question_id: string;
-  candidate_answer: string;
-}
-
 export const TRANSCRIPT_SPEAKER_TYPES = [
   "AI_INTERVIEWER",
   "CANDIDATE",

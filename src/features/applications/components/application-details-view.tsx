@@ -212,7 +212,7 @@ export function ApplicationDetailsView({
               value={<ApplicationStatusChip status={application.application_status} />}
             />
 
-            <DetailRow
+            {/*<DetailRow
               label="Screening score"
               value={application.screening_score ? <Typography>{application.screening_score}</Typography> : <EmptyValue />}
             />
@@ -220,7 +220,7 @@ export function ApplicationDetailsView({
             <DetailRow
               label="Fit score"
               value={application.fit_score ? <Typography>{application.fit_score}</Typography> : <EmptyValue />}
-            />
+            />*/}
 
             <DetailRow
               label="Last stage change"
@@ -275,55 +275,55 @@ export function ApplicationDetailsView({
 
         <Divider sx={{ my: 2.5 }} />
 
-          {stageHistory && stageHistory.length > 0 ? (
-            <Stack spacing={2}>
-              {stageHistory
-                .slice()
-                .sort((a, b) => (a.changed_at > b.changed_at ? -1 : 1))
-                .map((row) => (
-                  <Box
-                    key={row.id}
-                    sx={{
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      p: 2,
-                      bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
-                    }}
+        {stageHistory && stageHistory.length > 0 ? (
+          <Stack spacing={2}>
+            {stageHistory
+              .slice()
+              .sort((a, b) => (a.changed_at > b.changed_at ? -1 : 1))
+              .map((row) => (
+                <Box
+                  key={row.id}
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    p: 2,
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    sx={{ justifyContent: "space-between", gap: 1 }}
                   >
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      sx={{ justifyContent: "space-between", gap: 1 }}
-                    >
-                      <Stack spacing={0.25}>
-                        <Typography sx={{ fontWeight: 900 }}>
-                          {row.from_stage
-                            ? `${APPLICATION_STAGE_LABELS[row.from_stage]} → ${APPLICATION_STAGE_LABELS[row.to_stage]}`
-                            : `${APPLICATION_STAGE_LABELS[row.to_stage]}`}
-                        </Typography>
-                        {row.change_reason ? (
-                          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                            {row.change_reason}
-                          </Typography>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            —
-                          </Typography>
-                        )}
-                      </Stack>
-
-                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 800 }}>
-                        {formatDateTime(row.changed_at)}
+                    <Stack spacing={0.25}>
+                      <Typography sx={{ fontWeight: 900 }}>
+                        {row.from_stage
+                          ? `${APPLICATION_STAGE_LABELS[row.from_stage]} → ${APPLICATION_STAGE_LABELS[row.to_stage]}`
+                          : `${APPLICATION_STAGE_LABELS[row.to_stage]}`}
                       </Typography>
+                      {row.change_reason ? (
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                          {row.change_reason}
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          —
+                        </Typography>
+                      )}
                     </Stack>
-                  </Box>
-                ))}
-            </Stack>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              No stage history yet.
-            </Typography>
-          )}
+
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 800 }}>
+                      {formatDateTime(row.changed_at)}
+                    </Typography>
+                  </Stack>
+                </Box>
+              ))}
+          </Stack>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No stage history yet.
+          </Typography>
+        )}
       </Box>
     </Stack>
   );

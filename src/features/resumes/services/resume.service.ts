@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api.types";
 import type { CandidateDocumentResponse } from "@/features/candidates/types/candidates.types";
+import { resumeAnalysisService } from "@/features/resumes/services/resumeAnalysis.service";
 import type {
   CreateResumeAiAnalysisPayload,
   ListResumeAiAnalysesParams,
@@ -9,73 +10,48 @@ import type {
   ResumeAiAnalysisResponse,
 } from "@/features/resumes/types/resume.types";
 
-const BASE = "/ai-insights/resume-analyses";
-
 export const resumeService = {
   listAnalyses: async (
     params: ListResumeAiAnalysesParams,
   ): Promise<ListResumeAiAnalysesResponse> => {
-    const response = await apiClient.get<ListResumeAiAnalysesResponse>(BASE, {
-      params,
-    });
-    return response.data;
+    return resumeAnalysisService.listAnalyses(params);
   },
 
   getAnalysisById: async (
     id: string,
   ): Promise<ApiSuccessResponse<ResumeAiAnalysisResponse>> => {
-    const response = await apiClient.get<ApiSuccessResponse<ResumeAiAnalysisResponse>>(
-      `${BASE}/${id}`,
-    );
-    return response.data;
+    return resumeAnalysisService.getAnalysisById(id);
   },
 
   getAnalysisByDocumentId: async (
     candidateDocumentId: string,
   ): Promise<ApiSuccessResponse<ResumeAiAnalysisResponse>> => {
-    const response = await apiClient.get<ApiSuccessResponse<ResumeAiAnalysisResponse>>(
-      `${BASE}/by-document/${candidateDocumentId}`,
-    );
-    return response.data;
+    return resumeAnalysisService.getAnalysisByDocumentId(candidateDocumentId);
   },
 
   getLatestAnalysisByCandidate: async (
     candidateId: string,
   ): Promise<ApiSuccessResponse<ResumeAiAnalysisResponse>> => {
-    const response = await apiClient.get<ApiSuccessResponse<ResumeAiAnalysisResponse>>(
-      `${BASE}/candidate/${candidateId}/latest`,
-    );
-    return response.data;
+    return resumeAnalysisService.getLatestAnalysisByCandidate(candidateId);
   },
 
   createAnalysis: async (
     payload: CreateResumeAiAnalysisPayload,
   ): Promise<ApiSuccessResponse<ResumeAiAnalysisResponse>> => {
-    const response = await apiClient.post<ApiSuccessResponse<ResumeAiAnalysisResponse>>(
-      BASE,
-      payload,
-    );
-    return response.data;
+    return resumeAnalysisService.createAnalysis(payload);
   },
 
   startAnalysis: async (
     id: string,
   ): Promise<ApiSuccessResponse<ResumeAiAnalysisResponse>> => {
-    const response = await apiClient.post<ApiSuccessResponse<ResumeAiAnalysisResponse>>(
-      `${BASE}/${id}/start`,
-    );
-    return response.data;
+    return resumeAnalysisService.startAnalysis(id);
   },
 
   regenerateByDocumentId: async (
     candidateDocumentId: string,
     payload: RegenerateResumeAiAnalysisPayload = {},
   ): Promise<ApiSuccessResponse<ResumeAiAnalysisResponse>> => {
-    const response = await apiClient.post<ApiSuccessResponse<ResumeAiAnalysisResponse>>(
-      `${BASE}/by-document/${candidateDocumentId}/regenerate`,
-      payload,
-    );
-    return response.data;
+    return resumeAnalysisService.regenerateByDocumentId(candidateDocumentId, payload);
   },
 
   uploadResume: async (

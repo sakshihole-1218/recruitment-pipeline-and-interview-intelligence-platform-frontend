@@ -33,41 +33,29 @@ import { getApiErrorMessage } from "@/utils/api-error-handler";
 import { resolveAbsoluteUrl } from "@/utils/url";
 import { envConfig } from "@/config/env.config";
 import { candidatesService } from "@/features/candidates/services/candidates.service";
-import type { CandidateResponse } from "@/features/candidates/types/candidates.types";
+import type {
+  CandidateDocumentResponse,
+  CandidateResponse,
+} from "@/features/candidates/types/candidates.types";
 import { applicationsService } from "@/features/applications/services/applications.service";
 import type { ApplicationResponse } from "@/features/applications/types/applications.types";
 import { jobOpeningsService } from "@/features/job-openings/services/job-openings.service";
 import { ResumeTable } from "@/features/resumes/components/ResumeTable";
 import { ResumeUploadDialog } from "@/features/resumes/components/ResumeUploadDialog";
+import { resumeAnalysisService } from "@/features/resumes/services/resumeAnalysis.service";
 import { resumeService } from "@/features/resumes/services/resume.service";
 import {
-  RESUME_ANALYSIS_STATUSES,
-  RESUME_ANALYSIS_STATUS_LABELS,
+  RESUME_ROW_STATUSES,
+  RESUME_ROW_STATUS_LABELS,
   type ResumeAiAnalysisResponse,
-  type ResumeAnalysisStatus,
   type ResumeListRow,
-} from "@/features/resumes/types/resume.types";
+  type ResumeRowStatus,
+  toResumeFitScore,
+  unwrapResumeRows,
+} from "@/features/resumes/types/resumeAnalysis.types";
 
 function formatCandidateName(firstName?: string | null, lastName?: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ").trim() || "Unknown candidate";
-}
-
-function unwrapRows<T>(data: unknown): T[] {
-  if (!data) return [];
-
-  const response = data as { data?: unknown };
-  if (Array.isArray(response.data)) {
-    return response.data as T[];
-  }
-
-  const cursorData = response.data as { data?: T[] } | undefined;
-  return cursorData?.data ?? [];
-}
-
-function toNumber(value: string | null | undefined) {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function sortRows(rows: ResumeListRow[], sortModel: GridSortModel) {
@@ -103,7 +91,7 @@ export function ResumeListPage() {
 
   const [candidateName, setCandidateName] = useState("");
   const [selectedJobOpening, setSelectedJobOpening] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState<ResumeAnalysisStatus | "all">("all");
+  const [selectedStatus, setSelectedStatus] = useState<ResumeRowStatus | "all">("all");
   const [fitScoreMin, setFitScoreMin] = useState("");
   const [fitScoreMax, setFitScoreMax] = useState("");
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
@@ -116,85 +104,8 @@ export function ResumeListPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedUploadCandidateId, setSelectedUploadCandidateId] = useState<string | null>(null);
 
-  const analysesQuery = useQuery({
-    queryKey: ["resumes", "analyses", selectedStatus],
-    queryFn: () =>
-      resumeService.listAnalyses({
-        page: 1,
-        limit: 100,
-        ...(selectedStatus !== "all" ? { analysis_status: selectedStatus } : {}),
-        sort_by: "created_at",
-        sort_order: "desc",
-      }),
-  });
-
-  const analyses = useMemo(
-    () => unwrapRows<ResumeAiAnalysisResponse>(analysesQuery.data),
-    [analysesQuery.data],
-  );
-
-  const uniqueCandidateIds = useMemo(
-    () => Array.from(new Set(analyses.map((analysis) => analysis.candidate_id))),
-    [analyses],
-  );
-  const uniqueApplicationIds = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          analyses
-            .map((analysis) => analysis.application_id)
-            .filter((value): value is string => !!value),
-        ),
-      ),
-    [analyses],
-  );
-
-  const candidateQueries = useQueries({
-    queries: uniqueCandidateIds.map((candidateId) => ({
-      queryKey: ["candidates", "detail", candidateId],
-      queryFn: () => candidatesService.getById(candidateId),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
-  const candidateDocumentQueries = useQueries({
-    queries: uniqueCandidateIds.map((candidateId) => ({
-      queryKey: ["resumes", "candidate-documents", candidateId],
-      queryFn: () => candidatesService.listDocuments(candidateId),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
-  const applicationQueries = useQueries({
-    queries: uniqueApplicationIds.map((applicationId) => ({
-      queryKey: ["applications", "detail", applicationId],
-      queryFn: () => applicationsService.getById(applicationId),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
-  const uniqueJobOpeningIds = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          applicationQueries
-            .map((query) => query.data?.data.job_opening_id)
-            .filter((value): value is string => !!value),
-        ),
-      ),
-    [applicationQueries],
-  );
-
-  const jobOpeningQueries = useQueries({
-    queries: uniqueJobOpeningIds.map((jobOpeningId) => ({
-      queryKey: ["job-openings", "detail", jobOpeningId],
-      queryFn: () => jobOpeningsService.getById(jobOpeningId),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
-  const uploadCandidatesQuery = useQuery({
-    queryKey: ["resumes", "upload-candidates"],
+  const candidatesQuery = useQuery({
+    queryKey: ["resumes", "candidates"],
     queryFn: () =>
       candidatesService.list({
         page: 1,
@@ -204,6 +115,212 @@ export function ResumeListPage() {
       }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const analysesQuery = useQuery({
+    queryKey: ["resumes", "analyses"],
+    queryFn: () =>
+      resumeAnalysisService.listAnalyses({
+        page: 1,
+        limit: 500,
+        sort_by: "created_at",
+        sort_order: "desc",
+      }),
+  });
+
+  const candidates = useMemo(
+    () => unwrapResumeRows<CandidateResponse>(candidatesQuery.data),
+    [candidatesQuery.data],
+  );
+  const analyses = useMemo(
+    () => unwrapResumeRows<ResumeAiAnalysisResponse>(analysesQuery.data),
+    [analysesQuery.data],
+  );
+
+  const candidateDocumentsQueries = useQueries({
+    queries: candidates.map((candidate) => ({
+      queryKey: ["resumes", "candidate-documents", candidate.id],
+      queryFn: () => candidatesService.listDocuments(candidate.id),
+      staleTime: 5 * 60 * 1000,
+      enabled: candidates.length > 0,
+    })),
+  });
+
+  const latestAnalysisByDocumentId = useMemo(() => {
+    const map = new Map<string, ResumeAiAnalysisResponse>();
+
+    for (const analysis of analyses) {
+      const existing = map.get(analysis.candidate_document_id);
+      if (!existing) {
+        map.set(analysis.candidate_document_id, analysis);
+        continue;
+      }
+
+      const existingTime = new Date(existing.updated_at ?? existing.created_at).getTime();
+      const nextTime = new Date(analysis.updated_at ?? analysis.created_at).getTime();
+
+      if (nextTime > existingTime) {
+        map.set(analysis.candidate_document_id, analysis);
+      }
+    }
+
+    return map;
+  }, [analyses]);
+
+  const applicationIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          analyses
+            .map((analysis) => analysis.application_id)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ),
+    [analyses],
+  );
+
+  const applicationQueries = useQueries({
+    queries: applicationIds.map((applicationId) => ({
+      queryKey: ["applications", "detail", applicationId],
+      queryFn: () => applicationsService.getById(applicationId),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  const jobOpeningIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          applicationQueries
+            .map((query) => query.data?.data.job_opening_id)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ),
+    [applicationQueries],
+  );
+
+  const jobOpeningQueries = useQueries({
+    queries: jobOpeningIds.map((jobOpeningId) => ({
+      queryKey: ["job-openings", "detail", jobOpeningId],
+      queryFn: () => jobOpeningsService.getById(jobOpeningId),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  const applicationsById = useMemo(
+    () =>
+      new Map(
+        applicationQueries
+          .map((query) => query.data?.data)
+          .filter((value): value is NonNullable<typeof value> => Boolean(value))
+          .map((application) => [application.id, application]),
+      ),
+    [applicationQueries],
+  );
+
+  const jobOpeningsById = useMemo(
+    () =>
+      new Map(
+        jobOpeningQueries
+          .map((query) => query.data?.data)
+          .filter((value): value is NonNullable<typeof value> => Boolean(value))
+          .map((jobOpening) => [jobOpening.id, jobOpening]),
+      ),
+    [jobOpeningQueries],
+  );
+
+  const documentsByCandidateId = useMemo(
+    () =>
+      new Map(
+        candidateDocumentsQueries.map((query, index) => [
+          candidates[index]?.id,
+          (query.data?.data ?? []).filter(
+            (document): document is CandidateDocumentResponse =>
+              document.document_type === "RESUME",
+          ),
+        ]),
+      ),
+    [candidateDocumentsQueries, candidates],
+  );
+
+  const resumeRows = useMemo<ResumeListRow[]>(() => {
+    const allRows = candidates.flatMap((candidate) => {
+      const documents = documentsByCandidateId.get(candidate.id) ?? [];
+
+      return documents.map((document) => {
+        const analysis = latestAnalysisByDocumentId.get(document.id) ?? null;
+        const application = analysis?.application_id
+          ? applicationsById.get(analysis.application_id)
+          : undefined;
+        const jobOpening = application
+          ? jobOpeningsById.get(application.job_opening_id)
+          : undefined;
+
+        return {
+          id: document.id,
+          analysis_id: analysis?.id ?? null,
+          candidate_id: candidate.id,
+          candidate_name: formatCandidateName(candidate.first_name, candidate.last_name),
+          candidate_email: candidate.email ?? null,
+          application_id: analysis?.application_id ?? null,
+          job_applied: jobOpening?.title ?? "Unlinked application",
+          candidate_document_id: document.id,
+          resume_file_name: document.file_name,
+          resume_file_url: document.file_url ?? null,
+          mime_type: document.mime_type ?? null,
+          upload_date: document.uploaded_at ?? document.created_at,
+          analysis_status: analysis?.analysis_status ?? "NOT_STARTED",
+          ai_fit_score: toResumeFitScore(analysis?.ai_fit_score),
+        } satisfies ResumeListRow;
+      });
+    });
+
+    const normalizedCandidateName = candidateName.trim().toLowerCase();
+    const minFitScore = fitScoreMin === "" ? null : Number(fitScoreMin);
+    const maxFitScore = fitScoreMax === "" ? null : Number(fitScoreMax);
+
+    return sortRows(
+      allRows.filter((row) => {
+        const matchesCandidate =
+          !normalizedCandidateName ||
+          row.candidate_name.toLowerCase().includes(normalizedCandidateName);
+        const matchesJob =
+          selectedJobOpening === "all" || row.job_applied === selectedJobOpening;
+        const matchesStatus =
+          selectedStatus === "all" || row.analysis_status === selectedStatus;
+        const matchesMin =
+          minFitScore === null ||
+          (row.ai_fit_score !== null && row.ai_fit_score >= minFitScore);
+        const matchesMax =
+          maxFitScore === null ||
+          (row.ai_fit_score !== null && row.ai_fit_score <= maxFitScore);
+
+        return matchesCandidate && matchesJob && matchesStatus && matchesMin && matchesMax;
+      }),
+      sortModel,
+    );
+  }, [
+    applicationsById,
+    candidateName,
+    candidates,
+    documentsByCandidateId,
+    fitScoreMax,
+    fitScoreMin,
+    jobOpeningsById,
+    latestAnalysisByDocumentId,
+    selectedJobOpening,
+    selectedStatus,
+    sortModel,
+  ]);
+
+  const uploadCandidates = useMemo(() => {
+    return candidates
+      .map((candidate) => ({
+        id: candidate.id,
+        label: formatCandidateName(candidate.first_name, candidate.last_name),
+        email: candidate.email,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [candidates]);
 
   const uploadApplicationsQuery = useQuery({
     queryKey: ["resumes", "upload-applications", selectedUploadCandidateId],
@@ -219,145 +336,8 @@ export function ResumeListPage() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const candidatesById = useMemo(
-    () =>
-      new Map(
-        candidateQueries
-          .map((query) => query.data?.data)
-          .filter((value): value is NonNullable<typeof value> => !!value)
-          .map((candidate) => [candidate.id, candidate]),
-      ),
-    [candidateQueries],
-  );
-
-  const documentsByCandidateId = useMemo(
-    () =>
-      new Map(
-        candidateDocumentQueries.map((query, index) => [
-          uniqueCandidateIds[index],
-          query.data?.data ?? [],
-        ]),
-      ),
-    [candidateDocumentQueries, uniqueCandidateIds],
-  );
-
-  const applicationsById = useMemo(
-    () =>
-      new Map(
-        applicationQueries
-          .map((query) => query.data?.data)
-          .filter((value): value is NonNullable<typeof value> => !!value)
-          .map((application) => [application.id, application]),
-      ),
-    [applicationQueries],
-  );
-
-  const jobOpeningsById = useMemo(
-    () =>
-      new Map(
-        jobOpeningQueries
-          .map((query) => query.data?.data)
-          .filter((value): value is NonNullable<typeof value> => !!value)
-          .map((jobOpening) => [jobOpening.id, jobOpening]),
-      ),
-    [jobOpeningQueries],
-  );
-
-  const resumeRows = useMemo<ResumeListRow[]>(() => {
-    const byDocument = new Map<string, ResumeAiAnalysisResponse>();
-
-    for (const analysis of analyses) {
-      const existing = byDocument.get(analysis.candidate_document_id);
-      if (!existing) {
-        byDocument.set(analysis.candidate_document_id, analysis);
-        continue;
-      }
-
-      const existingTime = new Date(existing.created_at).getTime();
-      const nextTime = new Date(analysis.created_at).getTime();
-
-      if (nextTime > existingTime) {
-        byDocument.set(analysis.candidate_document_id, analysis);
-      }
-    }
-
-    const allRows = Array.from(byDocument.values()).map((analysis) => {
-      const candidate = candidatesById.get(analysis.candidate_id);
-      const documents = documentsByCandidateId.get(analysis.candidate_id) ?? [];
-      const resumeDocument =
-        documents.find((document) => document.id === analysis.candidate_document_id) ?? null;
-      const application = analysis.application_id
-        ? applicationsById.get(analysis.application_id)
-        : undefined;
-      const jobOpening = application
-        ? jobOpeningsById.get(application.job_opening_id)
-        : undefined;
-
-      return {
-        id: analysis.id,
-        analysis_id: analysis.id,
-        candidate_id: analysis.candidate_id,
-        candidate_name: formatCandidateName(candidate?.first_name, candidate?.last_name),
-        candidate_email: candidate?.email ?? null,
-        application_id: analysis.application_id,
-        job_applied: jobOpening?.title ?? "Unlinked application",
-        candidate_document_id: analysis.candidate_document_id,
-        resume_file_name: resumeDocument?.file_name ?? "Resume file",
-        resume_file_url: resumeDocument?.file_url ?? null,
-        mime_type: resumeDocument?.mime_type ?? null,
-        upload_date: resumeDocument?.uploaded_at ?? resumeDocument?.created_at ?? analysis.created_at,
-        analysis_status: analysis.analysis_status,
-        ai_fit_score: toNumber(analysis.ai_fit_score),
-      };
-    });
-
-    const normalizedCandidateName = candidateName.trim().toLowerCase();
-    const minFitScore = fitScoreMin === "" ? null : Number(fitScoreMin);
-    const maxFitScore = fitScoreMax === "" ? null : Number(fitScoreMax);
-
-    return sortRows(
-      allRows.filter((row) => {
-        const matchesCandidate =
-          !normalizedCandidateName ||
-          row.candidate_name.toLowerCase().includes(normalizedCandidateName);
-        const matchesJob =
-          selectedJobOpening === "all" || row.job_applied === selectedJobOpening;
-        const matchesMin =
-          minFitScore === null ||
-          (row.ai_fit_score !== null && row.ai_fit_score >= minFitScore);
-        const matchesMax =
-          maxFitScore === null ||
-          (row.ai_fit_score !== null && row.ai_fit_score <= maxFitScore);
-
-        return matchesCandidate && matchesJob && matchesMin && matchesMax;
-      }),
-      sortModel,
-    );
-  }, [
-    analyses,
-    applicationsById,
-    candidateName,
-    candidatesById,
-    documentsByCandidateId,
-    fitScoreMax,
-    fitScoreMin,
-    jobOpeningsById,
-    selectedJobOpening,
-    sortModel,
-  ]);
-
-  const uploadCandidates = useMemo(() => {
-    return unwrapRows<CandidateResponse>(uploadCandidatesQuery.data)
-      .map((candidate) => ({
-        id: candidate.id,
-        label: formatCandidateName(candidate.first_name, candidate.last_name),
-        email: candidate.email,
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label));
-  }, [uploadCandidatesQuery.data]);
-
   const uploadApplications = useMemo(() => {
-    const rows = unwrapRows<ApplicationResponse>(uploadApplicationsQuery.data);
+    const rows = unwrapResumeRows<ApplicationResponse>(uploadApplicationsQuery.data);
     const uniqueJobIds = Array.from(new Set(rows.map((row) => row.job_opening_id)));
 
     return rows.map((application) => {
@@ -367,7 +347,7 @@ export function ResumeListPage() {
 
       return {
         id: application.id,
-        label: `${application.application_number} • ${openingTitle}`,
+        label: `${application.application_number} - ${openingTitle}`,
       };
     });
   }, [jobOpeningsById, uploadApplicationsQuery.data]);
@@ -379,25 +359,19 @@ export function ResumeListPage() {
       file: File;
     }) => {
       const uploadedDocument = await resumeService.uploadResume(payload.candidateId, payload.file);
-      const analysis = await resumeService.createAnalysis({
-        candidate_document_id: uploadedDocument.data.id,
-        application_id: payload.applicationId,
-      });
-
-      try {
-        await resumeService.startAnalysis(analysis.data.id);
-      } catch {
-        // The record is still useful to surface in the UI even if the async
-        // provider cannot start immediately.
-      }
-
-      return analysis;
+      return { uploadedDocument, payload };
     },
-    onSuccess: async (result) => {
+    onSuccess: async ({ uploadedDocument, payload }) => {
       await queryClient.invalidateQueries({ queryKey: ["resumes"] });
       showSuccess("Resume uploaded successfully");
       setUploadOpen(false);
-      router.push(`${ROUTES.RESUMES}/${result.data.id}`);
+
+      const search = new URLSearchParams({ candidateId: payload.candidateId });
+      if (payload.applicationId) {
+        search.set("applicationId", payload.applicationId);
+      }
+
+      router.push(`${ROUTES.RESUMES}/${uploadedDocument.data.id}?${search.toString()}`);
     },
     onError: (error) => {
       showError(getApiErrorMessage(error));
@@ -405,8 +379,13 @@ export function ResumeListPage() {
   });
 
   const reanalyzeMutation = useMutation({
-    mutationFn: (row: ResumeListRow) =>
-      resumeService.regenerateByDocumentId(row.candidate_document_id),
+    mutationFn: (row: ResumeListRow) => {
+      if (!row.analysis_id) {
+        throw new Error("No analysis record exists for this resume yet.");
+      }
+
+      return resumeAnalysisService.reanalyzeById(row.analysis_id);
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["resumes"] });
       showSuccess("Resume re-analysis started");
@@ -416,7 +395,18 @@ export function ResumeListPage() {
     },
   });
 
-  const errorMessage = analysesQuery.isError ? getApiErrorMessage(analysesQuery.error) : "";
+  const loading =
+    candidatesQuery.isLoading ||
+    analysesQuery.isLoading ||
+    candidateDocumentsQueries.some((query) => query.isLoading) ||
+    applicationQueries.some((query) => query.isLoading) ||
+    jobOpeningQueries.some((query) => query.isLoading);
+
+  const errorMessage = candidatesQuery.isError
+    ? getApiErrorMessage(candidatesQuery.error)
+    : analysesQuery.isError
+      ? getApiErrorMessage(analysesQuery.error)
+      : "";
 
   return (
     <Box>
@@ -468,7 +458,7 @@ export function ResumeListPage() {
                 Resumes
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
-                View uploaded resumes, download files, and inspect AI analysis summaries in one place.
+                View uploaded resumes, start AI analysis, and inspect recruiter-ready summaries in one place.
               </Typography>
             </Box>
           </Stack>
@@ -548,7 +538,7 @@ export function ResumeListPage() {
             label="Analysis Status"
             value={selectedStatus}
             onChange={(event) => {
-              setSelectedStatus(event.target.value as ResumeAnalysisStatus | "all");
+              setSelectedStatus(event.target.value as ResumeRowStatus | "all");
               setPaginationModel((prev) => ({ ...prev, page: 0 }));
             }}
             sx={{
@@ -560,9 +550,9 @@ export function ResumeListPage() {
             }}
           >
             <MenuItem value="all">All</MenuItem>
-            {RESUME_ANALYSIS_STATUSES.map((status) => (
+            {RESUME_ROW_STATUSES.map((status) => (
               <MenuItem key={status} value={status}>
-                {RESUME_ANALYSIS_STATUS_LABELS[status]}
+                {RESUME_ROW_STATUS_LABELS[status]}
               </MenuItem>
             ))}
           </TextField>
@@ -634,14 +624,21 @@ export function ResumeListPage() {
       >
         <ResumeTable
           rows={resumeRows}
-          loading={analysesQuery.isLoading}
-          isError={analysesQuery.isError}
+          loading={loading}
+          isError={candidatesQuery.isError || analysesQuery.isError}
           errorMessage={errorMessage}
           paginationModel={paginationModel}
           onPaginationModelChange={setPaginationModel}
           sortModel={sortModel}
           onSortModelChange={setSortModel}
-          onView={(row) => router.push(`${ROUTES.RESUMES}/${row.analysis_id}`)}
+          onView={(row) => {
+            const search = new URLSearchParams({ candidateId: row.candidate_id });
+            if (row.application_id) {
+              search.set("applicationId", row.application_id);
+            }
+
+            router.push(`${ROUTES.RESUMES}/${row.candidate_document_id}?${search.toString()}`);
+          }}
           onDownload={(row) => {
             const resolvedUrl = resolveAbsoluteUrl(row.resume_file_url, envConfig.apiBaseUrl);
             if (resolvedUrl) {

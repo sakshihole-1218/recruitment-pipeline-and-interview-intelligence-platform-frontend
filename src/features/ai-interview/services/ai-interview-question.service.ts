@@ -7,7 +7,7 @@ import type {
 } from "@/features/ai-interview/types/ai-interview.types";
 
 const BASE = "/ai-interview-questions";
-const AI_INTERVIEW_REQUEST_TIMEOUT_MS = 15000;
+const AI_INTERVIEW_REQUEST_TIMEOUT_MS = 60000;
 
 export const aiInterviewQuestionService = {
   listBySession: async (

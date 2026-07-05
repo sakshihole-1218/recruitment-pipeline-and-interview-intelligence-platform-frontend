@@ -60,7 +60,21 @@ function renderNode(node: unknown, depth = 0): ReactNode {
   }
 
   if (typeof node === "object") {
-    const entries = Object.entries(node as Record<string, unknown>);
+    // Filter out internal and redundant fields from being displayed
+    const EXCLUDED_KEYS = new Set([
+      "context",
+      "extracted_text",
+      "skills", // Rendered in ExtractedSkillsCard
+      "ai_fit_score", // Rendered in ScoreCard
+      "experience_summary", // Rendered in SummaryCards
+      "education_summary", // Rendered in SummaryCards
+      "project_summary", // Rendered in SummaryCards
+      "certification_summary", // Rendered in SummaryCards
+    ]);
+
+    const entries = Object.entries(node as Record<string, unknown>).filter(
+      ([key]) => !EXCLUDED_KEYS.has(key)
+    );
 
     if (entries.length === 0) {
       return (

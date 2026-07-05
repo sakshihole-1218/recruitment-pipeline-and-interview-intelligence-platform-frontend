@@ -21,7 +21,6 @@ import {
   ArrowBack as BackIcon,
   Download as DownloadIcon,
   NavigateNext as NavigateNextIcon,
-  Refresh as ReanalyzeIcon,
 } from "@mui/icons-material";
 
 import { ROUTES } from "@/constants/routes";
@@ -33,58 +32,119 @@ import { envConfig } from "@/config/env.config";
 import { candidatesService } from "@/features/candidates/services/candidates.service";
 import { applicationsService } from "@/features/applications/services/applications.service";
 import { jobOpeningsService } from "@/features/job-openings/services/job-openings.service";
-import { ResumeAnalysisCard } from "@/features/resumes/components/ResumeAnalysisCard";
+import { ResumeAnalysisPanel } from "@/features/resumes/components/ResumeAnalysisPanel";
 import { ResumeViewer } from "@/features/resumes/components/ResumeViewer";
-import { SkillsExtractedCard } from "@/features/resumes/components/SkillsExtractedCard";
-import { resumeService } from "@/features/resumes/services/resume.service";
+import { resumeAnalysisService } from "@/features/resumes/services/resumeAnalysis.service";
+import {
+  CANDIDATE_DOCUMENT_TYPE_LABELS,
+  type CandidateDocumentResponse,
+} from "@/features/candidates/types/candidates.types";
+import {
+  type ResumeAnalysisStatus,
+  type ResumeRowStatus,
+  isResumeAnalysisInFlight,
+} from "@/features/resumes/types/resumeAnalysis.types";
 
 interface ResumeDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ candidateId?: string; applicationId?: string }>;
+}
+
+function handleAnalysisMutationFeedback(options: {
+  message: string;
+  showSuccess: (message: string) => void;
+  showError: (message: string) => void;
+  failureReason?: string | null;
+  status?: ResumeAnalysisStatus | null;
+}) {
+  const status = options.status ?? null;
+  const failureReason = options.failureReason ?? "";
+
+  if (status === "FAILED") {
+    options.showError(failureReason || "Resume analysis failed");
+    return;
+  }
+
+  if (status === "PENDING" || status === "PROCESSING") {
+    options.showSuccess(options.message);
+    return;
+  }
+
+  if (status === "COMPLETED") {
+    options.showSuccess("Resume analysis completed");
+    return;
+  }
+
+  options.showError("Resume analysis could not be started");
 }
 
 function formatCandidateName(firstName?: string | null, lastName?: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ").trim() || "Unknown candidate";
 }
 
-function formatValue(value: unknown, fallback = "—") {
+function formatValue(value: unknown, fallback = "-") {
   if (value === null || value === undefined || value === "") return fallback;
   return String(value);
 }
 
 function formatDateTime(value: string | null | undefined) {
-  if (!value) return "—";
+  if (!value) return "-";
   return new Date(value).toLocaleString();
 }
 
-export function ResumeDetailPage({ params }: ResumeDetailPageProps) {
+function isSupportedResumeDocument(document: CandidateDocumentResponse | null) {
+  if (!document) return false;
+
+  const name = document.file_name.toLowerCase();
+  const mimeType = String(document.mime_type ?? "").toLowerCase();
+
+  return (
+    name.endsWith(".pdf") ||
+    name.endsWith(".doc") ||
+    name.endsWith(".docx") ||
+    mimeType.includes("pdf") ||
+    mimeType.includes("msword") ||
+    mimeType.includes("wordprocessingml")
+  );
+}
+
+export function ResumeDetailPage({ params, searchParams }: ResumeDetailPageProps) {
   const { id } = use(params);
+  const resolvedSearchParams = use(searchParams);
   const router = useRouter();
   const queryClient = useQueryClient();
   const { snackbar, showError, showSuccess, closeSnackbar } = useSnackbar();
 
   const analysisQuery = useQuery({
-    queryKey: ["resumes", "analysis", id],
-    queryFn: () => resumeService.getAnalysisById(id),
+    queryKey: ["resumes", "analysis-by-document", id],
+    queryFn: () => resumeAnalysisService.getAnalysisByDocumentIdOrNull(id),
+    retry: false,
+    refetchInterval: (query) => {
+      const status = query.state.data?.data.analysis_status;
+      return isResumeAnalysisInFlight(status) ? 3000 : false;
+    },
   });
 
-  const analysis = analysisQuery.data?.data;
+  const analysis = analysisQuery.data?.data ?? null;
+  const candidateId = analysis?.candidate_id ?? resolvedSearchParams.candidateId ?? null;
+  const applicationId = analysis?.application_id ?? resolvedSearchParams.applicationId ?? null;
 
   const candidateQuery = useQuery({
-    queryKey: ["candidates", "detail", analysis?.candidate_id],
-    queryFn: () => candidatesService.getById(analysis!.candidate_id),
-    enabled: !!analysis?.candidate_id,
+    queryKey: ["candidates", "detail", candidateId],
+    queryFn: () => candidatesService.getById(candidateId!),
+    enabled: !!candidateId,
   });
 
   const documentsQuery = useQuery({
-    queryKey: ["resumes", "candidate-documents", analysis?.candidate_id],
-    queryFn: () => candidatesService.listDocuments(analysis!.candidate_id),
-    enabled: !!analysis?.candidate_id,
+    queryKey: ["resumes", "candidate-documents", candidateId],
+    queryFn: () => candidatesService.listDocuments(candidateId!),
+    enabled: !!candidateId,
   });
 
   const applicationQuery = useQuery({
-    queryKey: ["applications", "detail", analysis?.application_id],
-    queryFn: () => applicationsService.getById(analysis!.application_id!),
-    enabled: !!analysis?.application_id,
+    queryKey: ["applications", "detail", applicationId],
+    queryFn: () => applicationsService.getById(applicationId!),
+    enabled: !!applicationId,
   });
 
   const jobOpeningQuery = useQuery({
@@ -93,11 +153,46 @@ export function ResumeDetailPage({ params }: ResumeDetailPageProps) {
     enabled: !!applicationQuery.data?.data.job_opening_id,
   });
 
+  const createAndStartMutation = useMutation({
+    mutationFn: () =>
+      resumeAnalysisService.createAndStartAnalysis({
+        candidate_document_id: id,
+        application_id: applicationId ?? undefined,
+      }),
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({ queryKey: ["resumes", "analysis-by-document", id] });
+      await queryClient.invalidateQueries({ queryKey: ["resumes"] });
+      handleAnalysisMutationFeedback({
+        message: "Resume analysis started",
+        showSuccess,
+        showError,
+        status: response.data.analysis_status,
+        failureReason: response.data.failure_reason,
+      });
+    },
+    onError: (error) => {
+      showError(getApiErrorMessage(error));
+    },
+  });
+
   const reanalyzeMutation = useMutation({
-    mutationFn: () => resumeService.regenerateByDocumentId(analysis!.candidate_document_id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["resumes", "analysis", id] });
-      showSuccess("Resume re-analysis started");
+    mutationFn: () => {
+      if (!analysis?.id) {
+        throw new Error("Analysis record is missing.");
+      }
+
+      return resumeAnalysisService.reanalyzeById(analysis.id);
+    },
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({ queryKey: ["resumes", "analysis-by-document", id] });
+      await queryClient.invalidateQueries({ queryKey: ["resumes"] });
+      handleAnalysisMutationFeedback({
+        message: "Resume re-analysis started",
+        showSuccess,
+        showError,
+        status: response.data.analysis_status,
+        failureReason: response.data.failure_reason,
+      });
     },
     onError: (error) => {
       showError(getApiErrorMessage(error));
@@ -107,21 +202,25 @@ export function ResumeDetailPage({ params }: ResumeDetailPageProps) {
   const candidate = candidateQuery.data?.data;
   const documents = documentsQuery.data?.data ?? [];
   const resumeDocument =
-    documents.find((document) => document.id === analysis?.candidate_document_id) ??
-    documents.find((document) => document.document_type === "RESUME" && document.is_latest) ??
+    documents.find((document) => document.id === id) ??
     null;
   const application = applicationQuery.data?.data;
   const jobOpening = jobOpeningQuery.data?.data;
   const fullName = formatCandidateName(candidate?.first_name, candidate?.last_name);
+  const isResumeMissing = Boolean(candidateId && !documentsQuery.isLoading && !resumeDocument);
+  const isUnsupportedType = resumeDocument ? !isSupportedResumeDocument(resumeDocument) : false;
+  const analysisStatus: ResumeRowStatus = analysis?.analysis_status ?? "NOT_STARTED";
+  const backendError =
+    analysisQuery.isError ? getApiErrorMessage(analysisQuery.error) : "";
 
-  if (analysisQuery.isError) {
+  if (analysisQuery.isError && !candidateId) {
     return (
       <Box sx={{ textAlign: "center", py: 8 }}>
         <Typography variant="h6" color="error">
           Failed to load resume details
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          {getApiErrorMessage(analysisQuery.error)}
+          {backendError}
         </Typography>
         <Button variant="outlined" sx={{ mt: 3 }} onClick={() => router.push(ROUTES.RESUMES)}>
           Back to Resumes
@@ -137,7 +236,7 @@ export function ResumeDetailPage({ params }: ResumeDetailPageProps) {
           Resumes
         </Link>
         <Typography color="text.primary">
-          {analysisQuery.isLoading ? <Skeleton width={220} /> : fullName}
+          {candidateQuery.isLoading && !candidate ? <Skeleton width={220} /> : fullName}
         </Typography>
       </Breadcrumbs>
 
@@ -159,29 +258,18 @@ export function ResumeDetailPage({ params }: ResumeDetailPageProps) {
           </Typography>
         </Stack>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
-          <Button
-            variant="outlined"
-            startIcon={<ReanalyzeIcon />}
-            onClick={() => reanalyzeMutation.mutate()}
-            disabled={!analysis || reanalyzeMutation.isPending}
-            sx={{ borderRadius: 2, fontWeight: 900 }}
-          >
-            {reanalyzeMutation.isPending ? "Re-analyzing..." : "Re-analyze"}
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            component="a"
-            href={resolveAbsoluteUrl(resumeDocument?.file_url, envConfig.apiBaseUrl) ?? undefined}
-            target="_blank"
-            rel="noreferrer"
-            disabled={!resumeDocument?.file_url}
-            sx={{ borderRadius: 2, fontWeight: 900 }}
-          >
-            Download Resume
-          </Button>
-        </Stack>
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          component="a"
+          href={resolveAbsoluteUrl(resumeDocument?.file_url, envConfig.apiBaseUrl) ?? undefined}
+          target="_blank"
+          rel="noreferrer"
+          disabled={!resumeDocument?.file_url}
+          sx={{ borderRadius: 2, fontWeight: 900 }}
+        >
+          Download Resume
+        </Button>
       </Stack>
 
       <Stack spacing={2.5}>
@@ -212,7 +300,7 @@ export function ResumeDetailPage({ params }: ResumeDetailPageProps) {
                       ? `${analysis.total_experience_years_detected} years`
                       : candidate?.total_experience_years
                         ? `${candidate.total_experience_years} years`
-                        : "—"
+                        : "-"
                   }
                 />
               </Grid>
@@ -233,53 +321,54 @@ export function ResumeDetailPage({ params }: ResumeDetailPageProps) {
           mimeType={resumeDocument?.mime_type}
         />
 
-        {analysis ? <ResumeAnalysisCard analysis={analysis} /> : null}
-
-        {analysis ? <SkillsExtractedCard skills={analysis.skills_extracted} /> : null}
-
-        <SummaryCard
-          title="Experience Summary"
-          description="AI-generated summary of the candidate's work experience."
-          content={analysis?.experience_summary}
-        />
-
-        <SummaryCard
-          title="Education Summary"
-          description="AI-generated summary of the candidate's education background."
-          content={analysis?.education_summary}
+        <ResumeAnalysisPanel
+          analysis={analysis}
+          status={analysisStatus}
+          isFetching={analysisQuery.isLoading}
+          isCreating={createAndStartMutation.isPending && !analysis}
+          isRunning={isResumeAnalysisInFlight(analysis?.analysis_status as ResumeAnalysisStatus | undefined)}
+          isReanalyzing={reanalyzeMutation.isPending}
+          isResumeMissing={isResumeMissing}
+          isUnsupportedType={isUnsupportedType}
+          backendError={backendError}
+          onAnalyze={() => createAndStartMutation.mutate()}
+          onReanalyze={() => reanalyzeMutation.mutate()}
+          onRetry={() => reanalyzeMutation.mutate()}
         />
 
         <Card sx={{ borderRadius: 3, boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
           <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Stack spacing={0.3}>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Raw Resume Metadata
+                Resume Metadata
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Useful file and extraction metadata returned by the backend.
+                Upload details and file metadata for the current resume document.
               </Typography>
             </Stack>
 
             <Divider sx={{ my: 2.5 }} />
 
             <Grid container spacing={2.5}>
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <InfoItem title="Document Name" value={formatValue(resumeDocument?.file_name)} />
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <InfoItem
-                  title="Extracted Text Length"
+                  title="Document Type"
                   value={
-                    analysis?.extracted_text ? `${analysis.extracted_text.length.toLocaleString()} chars` : "—"
+                    resumeDocument
+                      ? CANDIDATE_DOCUMENT_TYPE_LABELS[resumeDocument.document_type]
+                      : "-"
                   }
                 />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <InfoItem
-                  title="Document Type"
-                  value={resumeDocument?.mime_type ?? formatValue(resumeDocument?.file_name?.split(".").pop()?.toUpperCase())}
-                />
+              <Grid size={{ xs: 12, md: 3 }}>
+                <InfoItem title="Mime Type" value={formatValue(resumeDocument?.mime_type)} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <InfoItem
-                  title="Upload Timestamp"
+                  title="Uploaded At"
                   value={formatDateTime(resumeDocument?.uploaded_at ?? resumeDocument?.created_at)}
                 />
               </Grid>
@@ -301,36 +390,5 @@ function InfoItem({ title, value }: { title: string; value: string }) {
       </Typography>
       <Typography sx={{ fontWeight: 800 }}>{value}</Typography>
     </Stack>
-  );
-}
-
-function SummaryCard({
-  title,
-  description,
-  content,
-}: {
-  title: string;
-  description: string;
-  content: string | null | undefined;
-}) {
-  return (
-    <Card sx={{ borderRadius: 3, boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
-      <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-        <Stack spacing={0.3}>
-          <Typography variant="h6" sx={{ fontWeight: 900 }}>
-            {title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {description}
-          </Typography>
-        </Stack>
-
-        <Divider sx={{ my: 2.5 }} />
-
-        <Typography variant="body2" color={content ? "text.primary" : "text.secondary"}>
-          {content || "No AI summary available yet."}
-        </Typography>
-      </CardContent>
-    </Card>
   );
 }

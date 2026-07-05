@@ -16,7 +16,7 @@ import {
 import type { Theme } from "@mui/material/styles";
 
 import {
-  RESUME_ANALYSIS_STATUS_LABELS,
+  RESUME_ROW_STATUS_LABELS,
   type ResumeListRow,
 } from "@/features/resumes/types/resume.types";
 
@@ -164,7 +164,7 @@ export function ResumeTable({
       headerName: "AI Analysis Status",
       minWidth: 170,
       valueFormatter: (value) =>
-        RESUME_ANALYSIS_STATUS_LABELS[value as keyof typeof RESUME_ANALYSIS_STATUS_LABELS],
+        RESUME_ROW_STATUS_LABELS[value as keyof typeof RESUME_ROW_STATUS_LABELS],
     },
     {
       field: "ai_fit_score",
@@ -205,7 +205,11 @@ export function ResumeTable({
                 size="small"
                 onClick={() => onReanalyze(params.row)}
                 sx={actionIconButtonSx}
-                disabled={!params.row.candidate_document_id || reanalyzingAnalysisId === params.row.analysis_id}
+                disabled={
+                  !params.row.analysis_id ||
+                  !params.row.candidate_document_id ||
+                  reanalyzingAnalysisId === params.row.analysis_id
+                }
               >
                 <ReanalyzeIcon fontSize="small" />
               </IconButton>

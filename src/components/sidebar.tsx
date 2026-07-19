@@ -32,12 +32,6 @@ import { getFilteredNavigation } from "@/utils/rbac";
 
 export const SIDEBAR_WIDTH = 80;
 
-
-const SIDEBAR_BG = "#1a2035";
-const SIDEBAR_ACTIVE_BG = "#2196f3";       
-const SIDEBAR_TEXT = "rgba(255,255,255,0.80)";
-const SIDEBAR_TEXT_ACTIVE = "#ffffff";
-
 const NAV_ICONS: Record<string, React.ReactNode> = {
   Dashboard: <DashboardIcon sx={{ fontSize: 26 }} />,
   "Access Control": <AdminIcon sx={{ fontSize: 26 }} />,
@@ -104,17 +98,15 @@ function NavItem({ title, path, isActive, onClick }: {
           borderRadius: 2.5,
           textDecoration: "none",
           cursor: "pointer",
-          color: isActive ? SIDEBAR_TEXT_ACTIVE : SIDEBAR_TEXT,
-          bgcolor: isActive ? SIDEBAR_ACTIVE_BG : "transparent",
-          boxShadow: isActive ? "0 4px 14px rgba(33,150,243,0.45)" : "none",
+          color: isActive ? "primary.main" : "text.secondary",
+          bgcolor: isActive ? (t) => alpha(t.palette.primary.main, 0.1) : "transparent",
           transition: "all 0.15s ease",
           "&:hover": {
             bgcolor: isActive
-              ? SIDEBAR_ACTIVE_BG
-              : alpha("#ffffff", 0.1),
-            color: SIDEBAR_TEXT_ACTIVE,
+              ? (t) => alpha(t.palette.primary.main, 0.15)
+              : "action.hover",
+            color: isActive ? "primary.main" : "text.primary",
           },
-          // White left accent bar on active item
           "&::before": isActive ? {
             content: '""',
             position: "absolute",
@@ -124,7 +116,7 @@ function NavItem({ title, path, isActive, onClick }: {
             width: 3,
             height: "60%",
             borderRadius: 99,
-            bgcolor: "#ffffff",
+            bgcolor: "primary.main",
           } : {},
         }}
       >
@@ -160,11 +152,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        bgcolor: SIDEBAR_BG,
         overflowX: "hidden",
       }}
     >
-      {/* Brand logo */}
       <Box
         sx={{
           display: "flex",
@@ -172,7 +162,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           justifyContent: "center",
           height: 64,
           flexShrink: 0,
-          borderBottom: `1px solid ${alpha("#ffffff", 0.08)}`,
+          borderBottom: "1px solid",
+          borderColor: "divider",
         }}
       >
         <Box
@@ -180,17 +171,17 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             width: 40,
             height: 40,
             borderRadius: 2,
-            bgcolor: SIDEBAR_ACTIVE_BG,
+            bgcolor: "primary.main",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: (t) => `0 4px 14px ${alpha(t.palette.primary.main, 0.4)}`,
           }}
         >
           <WorkIcon sx={{ color: "white", fontSize: 22 }} />
         </Box>
       </Box>
 
-      {/* Nav items */}
       <Box sx={{ flex: 1, overflowY: "auto", overflowX: "hidden", py: 1.5 }}>
         {filteredNav.map((item) => {
           if ("path" in item) {
@@ -207,7 +198,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             );
           }
 
-          // Group: render a faint divider label + children flat
           const hasActiveChild =
             "children" in item &&
             item.children.some(
@@ -218,7 +208,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
           return (
             <Box key={item.title} sx={{ mb: 0.5 }}>
-              {/* Section divider */}
               <Box
                 sx={{
                   display: "flex",
@@ -232,7 +221,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                   sx={{
                     flex: 1,
                     height: "1px",
-                    bgcolor: alpha("#ffffff", hasActiveChild ? 0.18 : 0.07),
+                    bgcolor: hasActiveChild ? "primary.main" : "divider",
+                    opacity: hasActiveChild ? 0.3 : 1,
                   }}
                 />
               </Box>
@@ -271,7 +261,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           "& .MuiDrawer-paper": {
             width: SIDEBAR_WIDTH,
             boxSizing: "border-box",
-            border: "none",
+            bgcolor: (t) => alpha(t.palette.background.paper, 0.8),
+            backdropFilter: "blur(12px)",
+            borderRight: "1px solid",
+            borderColor: "divider",
           },
         }}
       >
@@ -284,7 +277,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           "& .MuiDrawer-paper": {
             width: SIDEBAR_WIDTH,
             boxSizing: "border-box",
-            border: "none",
+            bgcolor: (t) => alpha(t.palette.background.paper, 0.8),
+            backdropFilter: "blur(12px)",
+            borderRight: "1px solid",
+            borderColor: "divider",
           },
         }}
         open
@@ -294,3 +290,4 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     </>
   );
 }
+

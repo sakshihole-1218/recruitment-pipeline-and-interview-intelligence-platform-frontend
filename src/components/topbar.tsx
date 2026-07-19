@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  alpha,
   AppBar,
   Avatar,
   Box,
@@ -23,8 +24,11 @@ import {
   Logout as LogoutIcon,
   AccountCircle as AccountCircleIcon,
   NavigateNext as NavigateNextIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon,
 } from "@mui/icons-material";
 import NextLink from "next/link";
+import { useTheme } from "next-themes";
 
 import { authStorage } from "@/utils/auth-storage";
 import { authService } from "@/features/auth/services/auth.service";
@@ -60,6 +64,7 @@ function useBreadcrumbs() {
 
 export function Topbar({ onMobileMenuOpen }: TopbarProps) {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const user = authStorage.getUser();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -104,7 +109,8 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
       sx={{
         width: { md: `calc(100% - ${SIDEBAR_WIDTH}px)` },
         ml: { md: `${SIDEBAR_WIDTH}px` },
-        bgcolor: "background.paper",
+        bgcolor: (t) => alpha(t.palette.background.paper, 0.8),
+        backdropFilter: "blur(12px)",
         borderBottom: "1px solid",
         borderColor: "divider",
         color: "text.primary",
@@ -165,6 +171,15 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
               </Typography>
             )}
           </Box>
+          <Tooltip title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+            <IconButton
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              size="small"
+              sx={{ p: 1, mr: 1 }}
+            >
+              {theme === "dark" ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
           <Tooltip title={fullName}>
             <IconButton
               onClick={handleMenuOpen}

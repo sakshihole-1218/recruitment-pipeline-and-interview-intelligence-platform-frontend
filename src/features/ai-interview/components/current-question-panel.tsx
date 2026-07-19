@@ -147,7 +147,7 @@ export function CurrentQuestionPanel({
                 sx={{
                   p: 2.5,
                   borderRadius: 2.5,
-                  bgcolor: "grey.50",
+                  bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "grey.50",
                   border: "1px solid",
                   borderColor: "divider",
                   fontWeight: 700,
@@ -168,7 +168,7 @@ export function CurrentQuestionPanel({
               sx={{
                 p: 2,
                 borderRadius: 2,
-                bgcolor: "grey.50",
+                bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "grey.50",
                 border: "1px dashed",
                 borderColor: "divider",
               }}

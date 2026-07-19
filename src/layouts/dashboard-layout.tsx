@@ -14,7 +14,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "grey.100" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default", color: "text.primary" }}>
       {/* Sidebar */}
       <Box
         component="nav"

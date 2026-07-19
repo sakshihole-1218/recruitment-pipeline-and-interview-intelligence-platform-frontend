@@ -279,7 +279,9 @@ export function AudioRecorder({
             sx={{
               p: 2,
               borderRadius: 2,
-              bgcolor: isRecording ? "error.50" : "grey.50",
+              bgcolor: isRecording 
+                ? (t) => t.palette.mode === "dark" ? "rgba(211, 47, 47, 0.15)" : "error.50"
+                : (t) => t.palette.mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "grey.50",
               border: "1px solid",
               borderColor: isRecording ? "error.200" : "divider",
             }}

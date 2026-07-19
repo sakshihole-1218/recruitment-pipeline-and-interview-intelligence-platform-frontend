@@ -131,7 +131,7 @@ export function TranscriptPanel({
                         bgcolor:
                           entry.speaker_type === "CANDIDATE"
                             ? "primary.main"
-                            : "grey.100",
+                            : (t) => t.palette.mode === "dark" ? "rgba(255, 255, 255, 0.05)" : "grey.100",
                         color:
                           entry.speaker_type === "CANDIDATE"
                             ? "primary.contrastText"

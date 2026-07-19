@@ -44,31 +44,43 @@ export function LiveKitCandidateStage() {
       sx={{
         flex: 1,
         minHeight: 420,
-        borderRadius: 3,
+        position: "relative",
+        borderRadius: 4,
         overflow: "hidden",
         border: "1px solid",
-        borderColor: "divider",
-        bgcolor: "grey.950",
+        borderColor: "rgba(255, 255, 255, 0.1)",
+        bgcolor: "#0F172A",
+        boxShadow: "inset 0 0 100px rgba(139, 92, 246, 0.1)",
       }}
     >
-      <Box sx={{ p: 2, height: "100%" }}>
-        {tracks[0] ? (
+      {tracks[0] ? (
+        <Box sx={{ position: "absolute", inset: 16 }}>
           <ParticipantTile
             trackRef={tracks[0]}
-            style={{ height: "100%", width: "100%", borderRadius: 16, overflow: "hidden" }}
+            style={{ 
+              height: "100%", 
+              width: "100%", 
+              borderRadius: "16px", 
+              overflow: "hidden",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+              border: "1px solid rgba(255, 255, 255, 0.15)"
+            }}
           />
-        ) : (
-          <Stack
-            spacing={1.5}
-            sx={{ alignItems: "center", justifyContent: "center", height: "100%", color: "common.white" }}
-          >
-            <Typography sx={{ fontWeight: 800 }}>Waiting for camera feed...</Typography>
-            <Typography variant="body2" sx={{ color: "grey.300" }}>
-              Your local participant tile will appear here once video is available.
-            </Typography>
-          </Stack>
-        )}
-      </Box>
+        </Box>
+      ) : (
+        <Stack
+          spacing={2}
+          sx={{ alignItems: "center", justifyContent: "center", height: "100%", color: "common.white", p: 3 }}
+        >
+          <Box sx={{ width: 64, height: 64, borderRadius: "50%", bgcolor: "rgba(255, 255, 255, 0.05)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse 2s infinite" }}>
+            <CircularProgress size={32} sx={{ color: "primary.light" }} />
+          </Box>
+          <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.5px" }}>Waiting for camera feed...</Typography>
+          <Typography variant="body2" sx={{ color: "grey.400", textAlign: "center", maxWidth: 300 }}>
+            Your local participant tile will float here once video is connected and available.
+          </Typography>
+        </Stack>
+      )}
     </Box>
   );
 }
@@ -99,10 +111,12 @@ export function LiveKitRoomControls({
       sx={{
         alignItems: { xs: "stretch", md: "center" },
         justifyContent: "space-between",
-        p: 2,
-        borderTop: "1px solid",
-        borderColor: "divider",
-        bgcolor: "background.paper",
+        p: 2.5,
+        mt: 2,
+        borderRadius: 4,
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+        bgcolor: "rgba(15, 23, 42, 0.6)",
+        backdropFilter: "blur(16px)",
       }}
     >
       <ControlBar
@@ -116,7 +130,13 @@ export function LiveKitRoomControls({
         startIcon={<EndCallIcon />}
         onClick={handleEnd}
         disabled={disconnecting || endPending}
-        sx={{ borderRadius: 2, fontWeight: 900, minWidth: 180 }}
+        sx={{ 
+          borderRadius: 3, 
+          fontWeight: 700, 
+          minWidth: 180,
+          boxShadow: "0 4px 14px rgba(211, 47, 47, 0.4)",
+          "&:hover": { boxShadow: "0 6px 20px rgba(211, 47, 47, 0.6)" }
+        }}
       >
         {disconnecting || endPending ? "Ending..." : "End Interview"}
       </Button>

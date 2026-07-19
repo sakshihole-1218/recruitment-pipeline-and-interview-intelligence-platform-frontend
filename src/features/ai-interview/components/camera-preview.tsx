@@ -154,10 +154,16 @@ export function CameraPreview({ onStatusChange }: CameraPreviewProps) {
           sx={{
             position: "relative",
             aspectRatio: "16 / 10",
-            bgcolor: "grey.950",
+            bgcolor: "#0F172A",
+            borderRadius: 4,
+            overflow: "hidden",
+            border: "1px solid",
+            borderColor: "rgba(255, 255, 255, 0.1)",
+            boxShadow: "inset 0 0 100px rgba(139, 92, 246, 0.1)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            m: 2,
           }}
         >
           <Box
@@ -167,8 +173,13 @@ export function CameraPreview({ onStatusChange }: CameraPreviewProps) {
             playsInline
             muted
             sx={{
-              width: "100%",
-              height: "100%",
+              position: "absolute",
+              inset: 16,
+              width: "calc(100% - 32px)",
+              height: "calc(100% - 32px)",
+              borderRadius: "16px",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
               objectFit: "cover",
               display:
                 status.camera === "granted" && status.microphone === "granted"

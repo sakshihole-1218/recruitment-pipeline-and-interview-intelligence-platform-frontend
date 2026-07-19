@@ -424,7 +424,8 @@ export default function UsersPage() {
           borderRadius: 3,
           border: "1px solid",
           borderColor: "divider",
-          background: (t) =>
+          bgcolor: "background.paper",
+          backgroundImage: (t) =>
             `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.06)} 0%, ${alpha(t.palette.primary.main, 0.02)} 100%)`,
         }}
       >

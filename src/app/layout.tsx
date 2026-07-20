@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/providers/app-provider";
 import { EmotionRegistry } from "@/providers/emotion-registry";
 import { ThemeProvider } from "next-themes";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Recruitment Pipeline & Interview Intelligence Platform",
@@ -23,7 +17,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} h-full antialiased`}
+      className={`h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

@@ -314,7 +314,7 @@ export function InterviewsListView() {
             direction="row"
             spacing={0.25}
             useFlexGap
-            sx={{ justifyContent: "center", alignItems: "center", py: 0.25, flexWrap: "wrap", width: "100%" }}
+            sx={{ justifyContent: "center", alignItems: "center", py: 0.25, flexWrap: "nowrap", width: "100%" }}
           >
             <Tooltip title="View details">
               <IconButton
@@ -347,14 +347,6 @@ export function InterviewsListView() {
                 </IconButton>
               </Tooltip>
             ) : null}
-
-            <Tooltip title="AI Interview (coming soon)">
-              <span>
-                <IconButton size="small" disabled sx={editIconButtonSx}>
-                  <AiIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
 
             {canCancelInterview ? (
               <Tooltip title="Cancel">

@@ -21,7 +21,7 @@ export default function LoginPage() {
           minHeight: "100vh",
           py: 6,
           px: 2,
-          background: "linear-gradient(135deg, #e3edf7 0%, #f8fafc 60%, #ede7f6 100%)",
+          background: "linear-gradient(135deg, #020617 0%, #0F172A 50%, #1e1b4b 100%)",
         }}
       >
         <LoginForm />

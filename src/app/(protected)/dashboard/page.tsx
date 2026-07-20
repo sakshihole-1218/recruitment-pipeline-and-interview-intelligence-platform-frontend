@@ -20,11 +20,13 @@ import { getUserRole } from "@/utils/rbac";
 import { ROLES, type Role } from "@/constants/roles";
 
 
+import { alpha } from "@mui/material/styles";
+
 const SUMMARY_CARDS: {
   label: string;
   icon: React.ReactNode;
   color: string;
-  bgColor: string;
+  bgColor: (t: any) => string;
   value: string;
   description: string;
   roles: Role[];
@@ -32,18 +34,17 @@ const SUMMARY_CARDS: {
   {
     label: "Job Openings",
     icon: <WorkIcon sx={{ fontSize: 32 }} />,
-    color: "#1976d2",
-    bgColor: "#e3f2fd",
+    color: "primary.main",
+    bgColor: (t) => alpha(t.palette.primary.main, 0.12),
     value: "—",
     description: "Active openings",
-
     roles: [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER],
   },
   {
     label: "Candidates",
     icon: <PersonIcon sx={{ fontSize: 32 }} />,
-    color: "#388e3c",
-    bgColor: "#e8f5e9",
+    color: "success.main",
+    bgColor: (t) => alpha(t.palette.success.main, 0.12),
     value: "—",
     description: "Registered candidates",
     roles: [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER],
@@ -51,8 +52,8 @@ const SUMMARY_CARDS: {
   {
     label: "Applications",
     icon: <AssignmentIcon sx={{ fontSize: 32 }} />,
-    color: "#f57c00",
-    bgColor: "#fff3e0",
+    color: "warning.main",
+    bgColor: (t) => alpha(t.palette.warning.main, 0.12),
     value: "—",
     description: "Submitted applications",
     roles: [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER],
@@ -60,18 +61,17 @@ const SUMMARY_CARDS: {
   {
     label: "Interviews",
     icon: <EventIcon sx={{ fontSize: 32 }} />,
-    color: "#7b1fa2",
-    bgColor: "#f3e5f5",
+    color: "secondary.main",
+    bgColor: (t) => alpha(t.palette.secondary.main, 0.12),
     value: "—",
     description: "Scheduled interviews",
-    // All roles can see interview stats — even Interviewers track their sessions
     roles: [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER, ROLES.INTERVIEWER],
   },
   {
     label: "Offers",
     icon: <OfferIcon sx={{ fontSize: 32 }} />,
-    color: "#c62828",
-    bgColor: "#ffebee",
+    color: "error.main",
+    bgColor: (t) => alpha(t.palette.error.main, 0.12),
     value: "—",
     description: "Offers extended",
     roles: [ROLES.ADMIN, ROLES.RECRUITER],

@@ -589,7 +589,7 @@ export default function JobOpeningsPage() {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => router.push(`${ROUTES.JOB_OPENINGS}/new`)}
-              sx={{ borderRadius: 2, px: 2.5, fontWeight: 800 }}
+              sx={{ px: 2.5, fontWeight: 800 }}
             >
               Create Job Opening
             </Button>
@@ -751,7 +751,6 @@ export default function JobOpeningsPage() {
             startIcon={<ClearIcon fontSize="small" />}
             sx={{
               height: 40,
-              borderRadius: 2,
               fontWeight: 800,
               flexShrink: 0,
             }}
@@ -795,7 +794,6 @@ export default function JobOpeningsPage() {
             },
           }}
           sx={{
-            border: "none",
             ...(isEmptyState
               ? {
                   "& .MuiDataGrid-virtualScroller": {
@@ -806,36 +804,6 @@ export default function JobOpeningsPage() {
                   },
                 }
               : {}),
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
-              borderBottom: "1px solid",
-              borderColor: "divider",
-            },
-            "& .MuiDataGrid-columnHeader": {
-              fontWeight: 800,
-              fontSize: "0.75rem",
-              letterSpacing: "0.2px",
-              textTransform: "none",
-              color: "text.secondary",
-              px: 2,
-            },
-            "& .MuiDataGrid-columnHeaderTitle": {
-              fontWeight: 800,
-            },
-            "& .MuiDataGrid-cell": {
-              py: 1.25,
-              borderColor: "divider",
-              px: 2,
-              alignItems: "center",
-            },
-            "& .MuiDataGrid-row:hover": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.03),
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "1px solid",
-              borderColor: "divider",
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
-            },
           }}
         />
       </Paper>

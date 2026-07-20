@@ -656,16 +656,6 @@ export default function DepartmentsPage() {
           }}
           sx={{
             border: "none",
-            ...(isEmptyState
-              ? {
-                  "& .MuiDataGrid-virtualScroller": {
-                    minHeight: 260,
-                  },
-                  "& .MuiDataGrid-overlayWrapperInner": {
-                    overflow: "visible",
-                  },
-                }
-              : {}),
             "& .MuiDataGrid-columnHeaders": {
               bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
               borderBottom: "1px solid",

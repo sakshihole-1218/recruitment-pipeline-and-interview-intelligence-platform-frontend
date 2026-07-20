@@ -9,6 +9,7 @@ import {
   Box,
   Breadcrumbs,
   Button,
+
   Card,
   CardContent,
   Chip,
@@ -27,14 +28,12 @@ import { AppSnackbar } from "@/components/app-snackbar";
 import { ROUTES } from "@/constants/routes";
 import { useSnackbar } from "@/hooks/use-snackbar";
 import { useApplication } from "@/features/applications/hooks/use-applications";
-import { AiInterviewerPanel } from "@/features/ai-interview/components/ai-interviewer-panel";
 import { CameraPreview } from "@/features/ai-interview/components/camera-preview";
 import { CandidateVoiceAnswerBox } from "@/features/ai-interview/components/candidate-voice-answer-box";
 import { CurrentQuestionPanel } from "@/features/ai-interview/components/current-question-panel";
 import { InterviewEngineProvider } from "@/features/ai-interview/context/interview-engine-context";
 import { useInterviewEngine } from "@/features/ai-interview/hooks/use-interview-engine";
 import { InterviewProgressBar } from "@/features/ai-interview/components/interview-progress-bar";
-import { QuestionContextCard } from "@/features/ai-interview/components/question-context-card";
 import { TranscriptPanel } from "@/features/ai-interview/components/transcript-panel";
 import {
   useEndAiInterviewSession,
@@ -659,17 +658,35 @@ function AiInterviewRoomContent({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", xl: "1.1fr 0.9fr 1fr" },
+          gridTemplateColumns: { xs: "1fr", lg: "1.1fr 0.9fr" },
           gap: 3,
-          alignItems: "stretch",
+          alignItems: "start",
           minHeight: 0,
         }}
       >
-        <Box sx={{ minWidth: 0 }}>
+        <Stack spacing={3} sx={{ minWidth: 0 }}>
           <CameraPreview />
-        </Box>
 
-        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+          <CandidateVoiceAnswerBox
+            disabled={!engine.currentQuestion || engine.isBusy || effectiveInterviewState === "COMPLETED"}
+            canRecord={!isRecordingDisabled}
+            canSubmit={canSubmitAnswer}
+            interviewState={effectiveInterviewState}
+            statusMessage={stateCopy.answerBoxMessage}
+            isAiSpeaking={isSpeaking || isPaused}
+            speechWarningMessage="Please wait until the AI interviewer finishes speaking before starting the recording."
+            submitPending={engine.isBusy}
+            hasAnsweredCurrentQuestion={engine.currentQuestionHasCandidateAnswer}
+            onRecordingStateChange={handleRecordingStateChange}
+            onTranscriptionStart={handleTranscriptionStart}
+            onTranscriptionSuccess={handleAnswerProcessed}
+            onSubmitError={handleTranscriptionError}
+            onSubmitManualAnswer={engine.submitAnswer}
+            onSubmitAudioAnswer={engine.submitAudioAnswer}
+          />
+        </Stack>
+
+        <Stack spacing={3} sx={{ minWidth: 0, height: "100%", display: "flex", flexDirection: "column" }}>
           <CurrentQuestionPanel
             currentQuestion={engine.currentQuestion}
             currentQuestionIndex={engine.rootQuestionIndex}
@@ -690,45 +707,22 @@ function AiInterviewRoomContent({
             onPauseSpeaking={pause}
             onResumeSpeaking={resume}
           />
-          <QuestionContextCard
-            currentQuestion={engine.currentQuestion}
-            isFollowUp={engine.isCurrentQuestionFollowUp}
+
+          <Box sx={{ flex: 1, minHeight: 400, minWidth: 0, display: "flex" }}>
+            <TranscriptPanel
+              questions={engine.questions}
+              transcriptEntries={engine.transcriptEntries}
+            />
+          </Box>
+
+          <InterviewFooterControls
+            onEndInterview={onEndInterview}
+            endPending={endPending}
+            onStopSpeaking={stop}
+            isCompleted={engine.isCompleted}
           />
-          <AiInterviewerPanel />
         </Stack>
-
-        <Box sx={{ minWidth: 0, minHeight: 0 }}>
-          <TranscriptPanel
-            questions={engine.questions}
-            transcriptEntries={engine.transcriptEntries}
-          />
-        </Box>
       </Box>
-
-      <CandidateVoiceAnswerBox
-        disabled={!engine.currentQuestion || engine.isBusy || effectiveInterviewState === "COMPLETED"}
-        canRecord={!isRecordingDisabled}
-        canSubmit={canSubmitAnswer}
-        interviewState={effectiveInterviewState}
-        statusMessage={stateCopy.answerBoxMessage}
-        isAiSpeaking={isSpeaking || isPaused}
-        speechWarningMessage="Please wait until the AI interviewer finishes speaking before starting the recording."
-        submitPending={engine.isBusy}
-        hasAnsweredCurrentQuestion={engine.currentQuestionHasCandidateAnswer}
-        onRecordingStateChange={handleRecordingStateChange}
-        onTranscriptionStart={handleTranscriptionStart}
-        onTranscriptionSuccess={handleAnswerProcessed}
-        onSubmitError={handleTranscriptionError}
-        onSubmitManualAnswer={engine.submitAnswer}
-        onSubmitAudioAnswer={engine.submitAudioAnswer}
-      />
-
-      <InterviewFooterControls
-        onEndInterview={onEndInterview}
-        endPending={endPending}
-        onStopSpeaking={stop}
-        isCompleted={engine.isCompleted}
-      />
     </Stack>
   );
 }

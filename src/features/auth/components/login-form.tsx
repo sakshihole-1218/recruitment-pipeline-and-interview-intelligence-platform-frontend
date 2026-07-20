@@ -17,12 +17,14 @@ import {
   Typography,
 } from "@mui/material";
 import { Visibility, VisibilityOff, WorkOutlined } from "@mui/icons-material";
+import { ThemeProvider } from "@mui/material/styles";
 
 import { loginSchema, LoginFormValues } from "@/features/auth/schemas/login.schema";
 import { useLogin } from "@/features/auth/hooks/use-login";
 import { authStorage } from "@/utils/auth-storage";
 import { ROUTES } from "@/constants/routes";
 import { getApiErrorMessage } from "@/utils/api-error-handler";
+import { darkTheme } from "@/theme/theme";
 
 export function LoginForm() {
   const router = useRouter();
@@ -55,13 +57,14 @@ export function LoginForm() {
   };
 
   return (
-    <Box
-      sx={{
-        width: "100%",
-        maxWidth: 440,
-        bgcolor: "background.paper",
-        borderRadius: 3,
-        boxShadow: "0 8px 40px rgba(0,0,0,0.10)",
+    <ThemeProvider theme={darkTheme}>
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 440,
+          bgcolor: "background.paper",
+          borderRadius: 3,
+          boxShadow: "0 8px 40px rgba(0,0,0,0.10)",
         p: { xs: 3, sm: 5 },
       }}
     >
@@ -82,15 +85,13 @@ export function LoginForm() {
         </Box>
         <Typography
           variant="h5"
-          sx={{ fontWeight: 700, textAlign: "center" }}
-          color="text.primary"
+          sx={{ fontWeight: 700, textAlign: "center", color: "common.white" }}
         >
           Recruitment Intelligence
         </Typography>
         <Typography
           variant="body2"
-          sx={{ textAlign: "center" }}
-          color="text.secondary"
+          sx={{ textAlign: "center", color: "grey.400" }}
         >
           Sign in to your admin account to continue
         </Typography>
@@ -124,12 +125,18 @@ export function LoginForm() {
             placeholder="you@example.com"
             error={!!errors.email}
             helperText={errors.email?.message}
+            sx={{
+              "& .MuiInputBase-input": { color: "common.white" },
+              "& .MuiInputLabel-root": { color: "grey.400" },
+              "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255, 255, 255, 0.2)" },
+              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255, 255, 255, 0.3)" },
+            }}
             slotProps={{
               inputLabel: { shrink: true },
               input: {
                 startAdornment: (
                   <InputAdornment position="start">
-                    <WorkOutlined sx={{ fontSize: 18, color: "text.disabled" }} />
+                    <WorkOutlined sx={{ fontSize: 18, color: "grey.400" }} />
                   </InputAdornment>
                 ),
               },
@@ -145,6 +152,12 @@ export function LoginForm() {
             placeholder="Enter your password"
             error={!!errors.password}
             helperText={errors.password?.message}
+            sx={{
+              "& .MuiInputBase-input": { color: "common.white" },
+              "& .MuiInputLabel-root": { color: "grey.400" },
+              "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255, 255, 255, 0.2)" },
+              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255, 255, 255, 0.3)" },
+            }}
             slotProps={{
               inputLabel: { shrink: true },
               input: {
@@ -155,6 +168,7 @@ export function LoginForm() {
                       onClick={() => setShowPassword((prev) => !prev)}
                       edge="end"
                       size="small"
+                      sx={{ color: "grey.400" }}
                     >
                       {showPassword ? (
                         <VisibilityOff sx={{ fontSize: 18 }} />
@@ -194,13 +208,14 @@ export function LoginForm() {
 
       {/* Footer */}
       <Stack sx={{ alignItems: "center", mt: 4, gap: 0.5 }}>
-        <Typography variant="caption" color="text.disabled">
+        <Typography variant="caption" sx={{ color: "grey.500" }}>
           © 2026 Recruitment Intelligence Platform
         </Typography>
-        <Typography variant="caption" color="text.disabled">
+        <Typography variant="caption" sx={{ color: "grey.500" }}>
           All rights reserved
         </Typography>
       </Stack>
     </Box>
+    </ThemeProvider>
   );
 }

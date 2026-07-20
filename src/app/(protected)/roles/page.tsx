@@ -400,7 +400,7 @@ export default function RolesPage() {
             variant="contained"
             size="small"
             onClick={handleSearchSubmit}
-            sx={{ height: 40, px: 2.5, borderRadius: 2, fontWeight: 700, flexShrink: 0 }}
+            sx={{ height: 40, px: 2.5, fontWeight: 700, flexShrink: 0 }}
           >
             Search
           </Button>
@@ -444,7 +444,6 @@ export default function RolesPage() {
             },
           }}
           sx={{
-            border: "none",
             ...(isEmptyState
               ? {
                   "& .MuiDataGrid-virtualScroller": {
@@ -455,35 +454,6 @@ export default function RolesPage() {
                   },
                 }
               : {}),
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
-              borderBottom: "1px solid",
-              borderColor: "divider",
-            },
-            "& .MuiDataGrid-columnHeader": {
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              letterSpacing: "0.2px",
-              textTransform: "none",
-              color: "text.secondary",
-              px: 2,
-            },
-            "& .MuiDataGrid-columnHeaderTitle": {
-              fontWeight: 700,
-            },
-            "& .MuiDataGrid-cell": {
-              py: 1.25,
-              borderColor: "divider",
-              px: 2,
-            },
-            "& .MuiDataGrid-row:hover": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.03),
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "1px solid",
-              borderColor: "divider",
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
-            },
           }}
         />
       </Paper>

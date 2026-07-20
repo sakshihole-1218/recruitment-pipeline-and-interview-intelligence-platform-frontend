@@ -108,30 +108,46 @@ function NoRowsOverlay({ isError, errorMessage, sx: _sx, ...divProps }: OverlayS
   return (
     <Box
       {...divProps}
-      sx={mergedSx}
+      sx={[{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 300,
+        px: 2,
+        py: 6,
+        gap: 2,
+        textAlign: "center",
+        animation: "fadeIn 0.5s ease-out",
+        "@keyframes fadeIn": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }, ...(Array.isArray(mergedSx) ? mergedSx : [mergedSx])]}
     >
       <Box
         sx={{
-          width: 48,
-          height: 48,
+          width: 72,
+          height: 72,
           borderRadius: "50%",
           bgcolor: (t) =>
-            alpha(t.palette[isError ? "error" : "primary"].main, isError ? 0.1 : 0.08),
+            alpha(t.palette[isError ? "error" : "primary"].main, isError ? 0.15 : 0.1),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          mb: 0.5,
+          mb: 1,
+          boxShadow: (t) => `0 0 20px ${alpha(t.palette[isError ? "error" : "primary"].main, 0.2)}`,
         }}
       >
-        <CandidatesIcon sx={{ color: isError ? "error.main" : "primary.main", fontSize: 24 }} />
+        <CandidatesIcon sx={{ color: isError ? "error.main" : "primary.main", fontSize: 36 }} />
       </Box>
-      <Typography variant="body1" sx={{ fontWeight: 800 }} color={isError ? "error" : "text.primary"}>
+      <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "-0.01em" }} color={isError ? "error" : "text.primary"}>
         {isError ? "Failed to load candidates" : "No candidates found"}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 520, whiteSpace: "normal" }}>
+      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400, whiteSpace: "normal" }}>
         {isError
           ? errorMessage
-          : "Try adjusting filters like name, status or location."}
+          : "Try adjusting filters like name, status or location to find what you're looking for."}
       </Typography>
     </Box>
   );
@@ -516,7 +532,7 @@ export default function CandidatesPage() {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => router.push(`${ROUTES.CANDIDATES}/new`)}
-              sx={{ borderRadius: 2, px: 2.5, fontWeight: 900 }}
+              sx={{ px: 2.5, fontWeight: 900 }}
             >
               Create Candidate
             </Button>
@@ -679,7 +695,6 @@ export default function CandidatesPage() {
             sx={{
               height: 40,
               px: 2.5,
-              borderRadius: 2,
               fontWeight: 800,
               flexShrink: 0,
               whiteSpace: "nowrap",
@@ -695,7 +710,6 @@ export default function CandidatesPage() {
             startIcon={<ClearIcon fontSize="small" />}
             sx={{
               height: 40,
-              borderRadius: 2,
               fontWeight: 800,
               flexShrink: 0,
               whiteSpace: "nowrap",
@@ -747,7 +761,6 @@ export default function CandidatesPage() {
             },
           }}
           sx={{
-            border: "none",
             ...(isEmptyState
               ? {
                   "& .MuiDataGrid-virtualScroller": {
@@ -758,36 +771,6 @@ export default function CandidatesPage() {
                   },
                 }
               : {}),
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
-              borderBottom: "1px solid",
-              borderColor: "divider",
-            },
-            "& .MuiDataGrid-columnHeader": {
-              fontWeight: 800,
-              fontSize: "0.75rem",
-              letterSpacing: "0.2px",
-              textTransform: "none",
-              color: "text.secondary",
-              px: 2,
-            },
-            "& .MuiDataGrid-columnHeaderTitle": {
-              fontWeight: 800,
-            },
-            "& .MuiDataGrid-cell": {
-              py: 1.25,
-              borderColor: "divider",
-              px: 2,
-              alignItems: "center",
-            },
-            "& .MuiDataGrid-row:hover": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.03),
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "1px solid",
-              borderColor: "divider",
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
-            },
           }}
         />
       </Paper>

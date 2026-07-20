@@ -79,61 +79,30 @@ function NoRowsOverlay({ isError, errorMessage }: NoRowsOverlayProps) {
         textAlign: "center",
       }}
     >
-      {isError ? (
-        <>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              bgcolor: (t) => alpha(t.palette.error.main, 0.1),
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              mb: 0.5,
-            }}
-          >
-            <PeopleIcon sx={{ color: "error.main", fontSize: 24 }} />
-          </Box>
-          <Typography variant="body1" color="error" sx={{ fontWeight: 600 }}>
-            Failed to load users
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ maxWidth: 360, whiteSpace: "normal" }}
-          >
-            {errorMessage}
-          </Typography>
-        </>
-      ) : (
-        <>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              mb: 0.5,
-            }}
-          >
-            <PeopleIcon sx={{ color: "primary.main", fontSize: 24 }} />
-          </Box>
-          <Typography variant="body1" sx={{ fontWeight: 600, color: "text.primary" }}>
-            No users found
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ maxWidth: 360, whiteSpace: "normal" }}
-          >
-            Try adjusting your search or filters.
-          </Typography>
-        </>
-      )}
+      <Box
+        sx={{
+          width: 72,
+          height: 72,
+          borderRadius: "50%",
+          bgcolor: (t) =>
+            alpha(t.palette[isError ? "error" : "primary"].main, isError ? 0.15 : 0.1),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          mb: 1,
+          boxShadow: (t) => `0 0 20px ${alpha(t.palette[isError ? "error" : "primary"].main, 0.2)}`,
+        }}
+      >
+        <PeopleIcon sx={{ color: isError ? "error.main" : "primary.main", fontSize: 36 }} />
+      </Box>
+      <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "-0.01em" }} color={isError ? "error" : "text.primary"}>
+        {isError ? "Failed to load users" : "No users found"}
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400, whiteSpace: "normal" }}>
+        {isError
+          ? errorMessage
+          : "Try adjusting your filters like name, email, or role to find what you're looking for."}
+      </Typography>
     </Box>
   );
 }
@@ -463,7 +432,6 @@ export default function UsersPage() {
               startIcon={<AddIcon />}
               onClick={() => router.push(`${ROUTES.USERS}/new`)}
               sx={{
-                borderRadius: 2,
                 fontWeight: 600,
                 px: 2.5,
                 py: 1,
@@ -532,7 +500,7 @@ export default function UsersPage() {
             variant="contained"
             size="small"
             onClick={handleSearchSubmit}
-            sx={{ height: 40, px: 2.5, borderRadius: 2, fontWeight: 600, flexShrink: 0 }}
+            sx={{ height: 40, px: 2.5, fontWeight: 600, flexShrink: 0 }}
           >
             Search
           </Button>
@@ -589,7 +557,6 @@ export default function UsersPage() {
           disableRowSelectionOnClick
           getRowHeight={getRowHeight}
           sx={{
-            border: "none",
             ...(isEmptyState
               ? {
                   "& .MuiDataGrid-virtualScroller": {
@@ -600,35 +567,6 @@ export default function UsersPage() {
                   },
                 }
               : {}),
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.04),
-              borderBottom: "1px solid",
-              borderColor: "divider",
-            },
-            "& .MuiDataGrid-columnHeader": {
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              letterSpacing: "0.2px",
-              textTransform: "none",
-              color: "text.secondary",
-              px: 2,
-            },
-            "& .MuiDataGrid-columnHeaderTitle": {
-              fontWeight: 700,
-            },
-            "& .MuiDataGrid-cell": {
-              py: 1.25,
-              borderColor: "divider",
-              px: 2,
-            },
-            "& .MuiDataGrid-row:hover": {
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.03),
-            },
-            "& .MuiDataGrid-footerContainer": {
-              borderTop: "1px solid",
-              borderColor: "divider",
-              bgcolor: (t) => alpha(t.palette.primary.main, 0.02),
-            },
           }}
           slots={{ noRowsOverlay: NoRowsOverlay }}
           slotProps={{

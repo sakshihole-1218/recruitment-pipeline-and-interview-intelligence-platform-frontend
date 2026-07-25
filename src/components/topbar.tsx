@@ -167,7 +167,7 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
             </Typography>
             {user?.roles && user.roles.length > 0 && (
               <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
-                {user.roles[0]}
+                {user.roles[0].replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
               </Typography>
             )}
           </Box>
@@ -231,7 +231,15 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
           )}
         </Box>
         <Divider />
-        <MenuItem onClick={handleMenuClose} sx={{ gap: 1.5, py: 1 }}>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            if (user?.id) {
+              router.push(`${ROUTES.USERS}/${user.id}`);
+            }
+          }}
+          sx={{ gap: 1.5, py: 1 }}
+        >
           <ListItemIcon>
             <AccountCircleIcon fontSize="small" />
           </ListItemIcon>

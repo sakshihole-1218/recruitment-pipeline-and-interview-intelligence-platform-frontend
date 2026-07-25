@@ -35,7 +35,8 @@ import { CancelInterviewDialog } from "@/features/interviews/components/cancel-i
 import { getInterviewDisplayStatus } from "@/features/interviews/types/interviews.types";
 import type { CancelInterviewFormValues } from "@/features/interviews/schemas/interview-cancel.schema";
 import { useApplication } from "@/features/applications/hooks/use-applications";
-import { useCandidate } from "@/features/candidates/hooks/use-candidates";
+import { useCandidate, useCandidateDocuments } from "@/features/candidates/hooks/use-candidates";
+import { CandidateDocumentsCard } from "@/features/candidates/components/candidate-documents-card";
 import { useJobOpening } from "@/features/job-openings/hooks/use-job-openings";
 
 function formatDateTime(value: string | null | undefined) {
@@ -58,6 +59,7 @@ export function InterviewDetailsView({ id }: { id: string }) {
   const application = applicationQuery.data?.data;
 
   const candidateQuery = useCandidate(application?.candidate_id ?? "");
+  const docsQuery = useCandidateDocuments(application?.candidate_id ?? "");
   const jobOpeningQuery = useJobOpening(application?.job_opening_id ?? "");
 
   const cancelMutation = useCancelInterview(id);
@@ -279,6 +281,14 @@ export function InterviewDetailsView({ id }: { id: string }) {
                   </Stack>
                 </CardContent>
               </Card>
+
+              {candidateQuery.data?.data && (
+                <CandidateDocumentsCard
+                  documents={docsQuery.data?.data}
+                  isLoading={docsQuery.isLoading}
+                  canUpload={false}
+                />
+              )}
             </Stack>
           )}
         </CardContent>

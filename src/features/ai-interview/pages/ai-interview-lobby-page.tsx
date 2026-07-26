@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +40,8 @@ import { InterviewStatusChip } from "@/features/interviews/components/interview-
 import { getInterviewDisplayStatus } from "@/features/interviews/types/interviews.types";
 import { useJobOpening } from "@/features/job-openings/hooks/use-job-openings";
 import { getApiErrorMessage } from "@/utils/api-error-handler";
+import { authStorage } from "@/utils/auth-storage";
+import { AuthUser } from "@/features/auth/types/auth.types";
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
@@ -61,6 +63,15 @@ export function AiInterviewLobbyPage({ id }: { id: string }) {
     microphone: "idle",
     errorMessage: "",
   });
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    setUser(authStorage.getUser());
+  }, []);
+
+  const isInternalUser = user?.roles?.some((role) =>
+    ["ADMIN", "RECRUITER", "HIRING_MANAGER", "INTERVIEWER"].includes(role)
+  );
 
   const interviewQuery = useInterview(id);
   const interview = interviewQuery.data?.data;
@@ -234,7 +245,7 @@ export function AiInterviewLobbyPage({ id }: { id: string }) {
             </CardContent>
           </Card>
 
-          <InterviewInstructionsCard />
+          {!isInternalUser ? <InterviewInstructionsCard /> : null}
 
           <Card
             elevation={0}

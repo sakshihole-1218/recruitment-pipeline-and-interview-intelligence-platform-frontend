@@ -127,9 +127,9 @@ export function CandidateVoiceAnswerBox({
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
               Candidate Answer
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {/* <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               Record the spoken answer first. Manual text submission remains available as a development fallback.
-            </Typography>
+            </Typography> */}
           </Box>
 
           {statusMessage ? <Alert severity="info">{statusMessage}</Alert> : null}
@@ -184,6 +184,7 @@ export function CandidateVoiceAnswerBox({
             </Alert>
           ) : null}
 
+          {/* 
           <Divider />
 
           <Stack spacing={2}>
@@ -232,6 +233,7 @@ export function CandidateVoiceAnswerBox({
                 : "Submit Manual Answer"}
             </Button>
           </Stack>
+          */}
         </Stack>
       </CardContent>
     </Card>

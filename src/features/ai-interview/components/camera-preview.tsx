@@ -29,6 +29,7 @@ export interface CameraPreviewStatus {
 
 interface CameraPreviewProps {
   onStatusChange?: (status: CameraPreviewStatus) => void;
+  hideHelpText?: boolean;
 }
 
 function getStatusTone(status: PermissionState): "success" | "warning" | "default" {
@@ -45,7 +46,7 @@ function getStatusLabel(label: string, status: PermissionState) {
   return `${label}: pending`;
 }
 
-export function CameraPreview({ onStatusChange }: CameraPreviewProps) {
+export function CameraPreview({ onStatusChange, hideHelpText }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -234,11 +235,11 @@ export function CameraPreview({ onStatusChange }: CameraPreviewProps) {
             >
               {status.errorMessage}
             </Alert>
-          ) : (
+          ) : !hideHelpText ? (
             <Typography variant="body2" color="text.secondary">
               Your preview stays local to this browser until you click Join Interview.
             </Typography>
-          )}
+          ) : null}
         </Stack>
       </CardContent>
     </Card>

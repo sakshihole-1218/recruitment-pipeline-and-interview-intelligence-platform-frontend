@@ -336,7 +336,7 @@ export function InterviewsListView() {
               </IconButton>
             </Tooltip>
 
-            {canRescheduleInterview ? (
+            {canRescheduleInterview && ["SCHEDULED", "RESCHEDULED"].includes(p.row.interview_status) ? (
               <Tooltip title="Edit / Reschedule">
                 <IconButton
                   size="small"
@@ -348,7 +348,7 @@ export function InterviewsListView() {
               </Tooltip>
             ) : null}
 
-            {canCancelInterview ? (
+            {canCancelInterview && ["SCHEDULED", "RESCHEDULED"].includes(p.row.interview_status) ? (
               <Tooltip title="Cancel">
                 <IconButton
                   size="small"

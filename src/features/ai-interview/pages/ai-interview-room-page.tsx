@@ -305,18 +305,6 @@ export function AiInterviewRoomPage({ id }: { id: string }) {
 
   return (
     <Box sx={{ maxWidth: 1440, mx: "auto", minHeight: "calc(100vh - 140px)" }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
-        <Link component={NextLink} href={ROUTES.INTERVIEWS} underline="hover" color="inherit">
-          Interviews
-        </Link>
-        <Link component={NextLink} href={`${ROUTES.INTERVIEWS}/${id}`} underline="hover" color="inherit">
-          Interview Details
-        </Link>
-        <Link component={NextLink} href={`${ROUTES.INTERVIEWS}/${id}/ai-room`} underline="hover" color="inherit">
-          AI Interview Lobby
-        </Link>
-        <Typography color="text.primary">AI Interview Session</Typography>
-      </Breadcrumbs>
 
       {pageError ? (
         <Card
@@ -399,6 +387,7 @@ function AiInterviewRoomContent({
     stop,
   } = questionSpeech;
   const [interviewState, setInterviewState] = useState<AiInterviewRoomState>("WAITING_FOR_ANSWER");
+  const [showTranscript, setShowTranscript] = useState(false);
   const autoSpokenQuestionIdsRef = useRef<Set<string>>(new Set());
   const activeSpeechQuestionIdRef = useRef<string | null>(null);
 
@@ -611,61 +600,49 @@ function AiInterviewRoomContent({
 
   return (
     <Stack spacing={3} sx={{ minHeight: "calc(100vh - 220px)" }}>
-      <Card
-        elevation={0}
-        sx={{
-          borderRadius: 3,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <CardContent sx={{ p: 3 }}>
-          <Stack spacing={1.5}>
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Session Details
-              </Typography>
-              <Chip
-                icon={<AiIcon />}
-                label={`${session.session_code} • ${session.session_status}`}
-                color="primary"
-                variant="outlined"
-              />
-              <Chip
-                label={`${engine.answeredQuestions}/${engine.totalQuestions || 0} answered`}
-                variant="outlined"
-              />
-              <Chip icon={<MicIcon />} label="Voice mode" variant="outlined" />
-            </Stack>
-
-            <Typography variant="body2" color="text.secondary">
-              Candidate: {candidateLoading ? "Loading..." : candidateName}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Job Opening: {jobOpeningLoading ? "Loading..." : jobOpeningTitle}
-            </Typography>
-          </Stack>
-        </CardContent>
-      </Card>
-
-      <InterviewProgressBar
-        questionLabel={engine.currentQuestionLabel}
-        answeredQuestions={engine.answeredQuestions}
-        totalQuestions={engine.totalQuestions}
-        progressPercent={engine.progressPercent}
-      />
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ alignItems: "center", justifyContent: "space-between" }}>
+        <Box sx={{ flex: 1, width: "100%" }}>
+          <InterviewProgressBar
+            questionLabel={engine.currentQuestionLabel}
+            answeredQuestions={engine.answeredQuestions}
+            totalQuestions={engine.totalQuestions}
+            progressPercent={engine.progressPercent}
+          />
+        </Box>
+        <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            onClick={() => setShowTranscript(!showTranscript)}
+            sx={{ borderRadius: 2, fontWeight: 900 }}
+          >
+            {showTranscript ? "Hide Transcript" : "View Transcript"}
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={async () => {
+              stop();
+              await onEndInterview();
+            }}
+            disabled={endPending}
+            sx={{ borderRadius: 2, fontWeight: 900 }}
+          >
+            {endPending ? "Ending..." : engine.isCompleted ? "Finish Interview" : "End Interview"}
+          </Button>
+        </Stack>
+      </Stack>
 
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", lg: "1.1fr 0.9fr" },
+          gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" },
           gap: 3,
           alignItems: "start",
           minHeight: 0,
         }}
       >
-        <Stack spacing={3} sx={{ minWidth: 0 }}>
-          <CameraPreview />
+        <Stack spacing={3} sx={{ minWidth: 0, width: "100%" }}>
+          <CameraPreview hideHelpText />
 
           <CandidateVoiceAnswerBox
             disabled={!engine.currentQuestion || engine.isBusy || effectiveInterviewState === "COMPLETED"}
@@ -708,19 +685,14 @@ function AiInterviewRoomContent({
             onResumeSpeaking={resume}
           />
 
-          <Box sx={{ flex: 1, minHeight: 400, minWidth: 0, display: "flex" }}>
-            <TranscriptPanel
-              questions={engine.questions}
-              transcriptEntries={engine.transcriptEntries}
-            />
-          </Box>
-
-          <InterviewFooterControls
-            onEndInterview={onEndInterview}
-            endPending={endPending}
-            onStopSpeaking={stop}
-            isCompleted={engine.isCompleted}
-          />
+          {showTranscript && (
+            <Box sx={{ flex: 1, minHeight: 400, minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
+              <TranscriptPanel
+                questions={engine.questions}
+                transcriptEntries={engine.transcriptEntries}
+              />
+            </Box>
+          )}
         </Stack>
       </Box>
     </Stack>
@@ -757,46 +729,4 @@ function InterviewRoomLoadingState({
   );
 }
 
-function InterviewFooterControls({
-  onEndInterview,
-  endPending,
-  onStopSpeaking,
-  isCompleted,
-}: {
-  onEndInterview: () => Promise<void>;
-  endPending: boolean;
-  onStopSpeaking: () => void;
-  isCompleted: boolean;
-}) {
-  return (
-    <Stack
-      direction={{ xs: "column", md: "row" }}
-      spacing={2}
-      sx={{
-        alignItems: { xs: "stretch", md: "center" },
-        justifyContent: "flex-end",
-        p: 2,
-        borderTop: "1px solid",
-        borderColor: "divider",
-        bgcolor: "background.paper",
-      }}
-    >
-      <Button
-        variant="contained"
-        color="error"
-        onClick={async () => {
-          onStopSpeaking();
-          await onEndInterview();
-        }}
-        disabled={endPending}
-        sx={{ borderRadius: 2, fontWeight: 900, minWidth: 180 }}
-      >
-        {endPending
-          ? "Ending..."
-          : isCompleted
-            ? "Finish Interview"
-            : "End Interview Early"}
-      </Button>
-    </Stack>
-  );
-}
+

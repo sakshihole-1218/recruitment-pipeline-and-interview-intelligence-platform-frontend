@@ -149,7 +149,7 @@ export function InterviewDetailsView({ id }: { id: string }) {
           >
             Join AI Interview
           </Button>
-          {canRescheduleInterview ? (
+          {canRescheduleInterview && interview && ["SCHEDULED", "RESCHEDULED"].includes(interview.interview_status) ? (
             <Button
               variant="contained"
               size="small"
@@ -160,7 +160,7 @@ export function InterviewDetailsView({ id }: { id: string }) {
               Reschedule
             </Button>
           ) : null}
-          {canCancelInterview ? (
+          {canCancelInterview && interview && ["SCHEDULED", "RESCHEDULED"].includes(interview.interview_status) ? (
             <Button
               variant="outlined"
               size="small"

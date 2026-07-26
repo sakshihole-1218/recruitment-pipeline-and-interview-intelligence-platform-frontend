@@ -98,7 +98,7 @@ export function AiQuestionSpeaker({
         <Typography variant="body2" color="text.secondary">
           {isSpeaking
             ? "The interviewer prompt is being read aloud. Recording will unlock when playback finishes."
-            : "Question playback uses the browser SpeechSynthesis voice. Main and follow-up questions both auto-play once, and replay stays available throughout the interview."}
+            : null}
         </Typography>
       )}
     </Stack>

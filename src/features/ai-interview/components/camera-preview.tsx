@@ -30,6 +30,8 @@ export interface CameraPreviewStatus {
 interface CameraPreviewProps {
   onStatusChange?: (status: CameraPreviewStatus) => void;
   hideHelpText?: boolean;
+  compact?: boolean;
+  fillHeight?: boolean;
 }
 
 function getStatusTone(status: PermissionState): "success" | "warning" | "default" {
@@ -46,7 +48,12 @@ function getStatusLabel(label: string, status: PermissionState) {
   return `${label}: pending`;
 }
 
-export function CameraPreview({ onStatusChange, hideHelpText }: CameraPreviewProps) {
+export function CameraPreview({
+  onStatusChange,
+  hideHelpText,
+  compact = false,
+  fillHeight = false,
+}: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -147,14 +154,23 @@ export function CameraPreview({ onStatusChange, hideHelpText }: CameraPreviewPro
         border: "1px solid",
         borderColor: "divider",
         overflow: "hidden",
-        height: "100%",
+        height: fillHeight ? "100%" : "auto",
       }}
     >
-      <CardContent sx={{ p: 0, height: "100%" }}>
+      <CardContent
+        sx={{
+          p: 0,
+          height: fillHeight ? "100%" : "auto",
+          display: fillHeight ? "flex" : "block",
+          flexDirection: fillHeight ? "column" : undefined,
+        }}
+      >
         <Box
           sx={{
             position: "relative",
-            aspectRatio: "16 / 10",
+            aspectRatio: fillHeight ? undefined : compact ? "16 / 6" : "16 / 7",
+            flex: fillHeight ? 1 : undefined,
+            minHeight: fillHeight ? 0 : undefined,
             bgcolor: "#0F172A",
             borderRadius: 4,
             overflow: "hidden",
@@ -164,7 +180,8 @@ export function CameraPreview({ onStatusChange, hideHelpText }: CameraPreviewPro
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            m: 2,
+            m: compact ? 1.25 : 1.5,
+            mb: compact ? 0.25 : 0.75,
           }}
         >
           <Box
@@ -175,9 +192,9 @@ export function CameraPreview({ onStatusChange, hideHelpText }: CameraPreviewPro
             muted
             sx={{
               position: "absolute",
-              inset: 16,
-              width: "calc(100% - 32px)",
-              height: "calc(100% - 32px)",
+              inset: compact ? 10 : 12,
+              width: compact ? "calc(100% - 20px)" : "calc(100% - 24px)",
+              height: compact ? "calc(100% - 20px)" : "calc(100% - 24px)",
               borderRadius: "16px",
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
               border: "1px solid rgba(255, 255, 255, 0.15)",
@@ -203,7 +220,14 @@ export function CameraPreview({ onStatusChange, hideHelpText }: CameraPreviewPro
           ) : null}
         </Box>
 
-        <Stack spacing={2} sx={{ p: 3 }}>
+        <Stack
+          spacing={compact ? 0.75 : 1}
+          sx={{
+            px: compact ? 2 : 2.5,
+            pb: compact ? 1.75 : 2.25,
+            pt: compact ? 0.5 : 1,
+          }}
+        >
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
             <Chip
               icon={status.camera === "granted" ? <VideocamIcon /> : <VideocamOffIcon />}

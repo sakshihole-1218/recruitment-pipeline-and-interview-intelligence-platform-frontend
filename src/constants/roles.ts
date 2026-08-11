@@ -12,6 +12,8 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
+export const INTERNAL_ROLE_VALUES = Object.values(ROLES) as Role[];
+
 // ---------------------------------------------------------------------------
 // Per-role allowed routes (leaf paths only — groups are shown when ≥1 child allowed)
 // ---------------------------------------------------------------------------

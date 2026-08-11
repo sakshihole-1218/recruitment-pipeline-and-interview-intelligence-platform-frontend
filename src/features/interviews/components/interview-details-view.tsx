@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   Divider,
   Link,
   Stack,
@@ -38,6 +39,12 @@ import { useApplication } from "@/features/applications/hooks/use-applications";
 import { useCandidate, useCandidateDocuments } from "@/features/candidates/hooks/use-candidates";
 import { CandidateDocumentsCard } from "@/features/candidates/components/candidate-documents-card";
 import { useJobOpening } from "@/features/job-openings/hooks/use-job-openings";
+import {
+  useCandidateInterviewInvite,
+  useCreateCandidateInterviewInvite,
+  useRegenerateCandidateInterviewInvite,
+  useRevokeCandidateInterviewInvite,
+} from "@/features/candidate-interview/hooks/use-candidate-interview";
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
@@ -61,6 +68,11 @@ export function InterviewDetailsView({ id }: { id: string }) {
   const candidateQuery = useCandidate(application?.candidate_id ?? "");
   const docsQuery = useCandidateDocuments(application?.candidate_id ?? "");
   const jobOpeningQuery = useJobOpening(application?.job_opening_id ?? "");
+  const inviteQuery = useCandidateInterviewInvite(id);
+  const invite = inviteQuery.data?.data;
+  const createInviteMutation = useCreateCandidateInterviewInvite(id);
+  const regenerateInviteMutation = useRegenerateCandidateInterviewInvite(id);
+  const revokeInviteMutation = useRevokeCandidateInterviewInvite(id);
 
   const cancelMutation = useCancelInterview(id);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -85,6 +97,23 @@ export function InterviewDetailsView({ id }: { id: string }) {
   }, [candidateQuery.data, jobOpeningQuery.data]);
 
   const errorMessage = interviewQuery.isError ? getApiErrorMessage(interviewQuery.error) : "";
+
+  const copyInviteLink = async () => {
+    const link = invite?.join_url;
+    if (!link) {
+      showError("Generate an invite first");
+      return;
+    }
+
+    const absolute = typeof window !== "undefined" ? `${window.location.origin}${link}` : link;
+
+    try {
+      await navigator.clipboard.writeText(absolute);
+      showSuccess("Candidate interview link copied");
+    } catch {
+      showError("Unable to copy interview link");
+    }
+  };
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto" }}>
@@ -129,26 +158,40 @@ export function InterviewDetailsView({ id }: { id: string }) {
           useFlexGap
           sx={{ alignItems: "center", justifyContent: { xs: "flex-start", sm: "flex-end" }, flexWrap: "wrap" }}
         >
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AiIcon />}
-            onClick={() => router.push(`${ROUTES.INTERVIEWS}/${id}/ai-room`)}
-            disabled={interviewQuery.isLoading || !interview}
-            sx={{ borderRadius: 2, fontWeight: 900 }}
-          >
-            AI Lobby
-          </Button>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AiIcon />}
-            onClick={() => router.push(`${ROUTES.INTERVIEWS}/${id}/ai-room/session`)}
-            disabled={interviewQuery.isLoading || !interview}
-            sx={{ borderRadius: 2, fontWeight: 900 }}
-          >
-            Join AI Interview
-          </Button>
+          {!interview?.is_ai_interview ? (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AiIcon />}
+                onClick={() => router.push(`${ROUTES.INTERVIEWS}/${id}/ai-room`)}
+                disabled={interviewQuery.isLoading || !interview}
+                sx={{ borderRadius: 2, fontWeight: 900 }}
+              >
+                AI Lobby
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AiIcon />}
+                onClick={() => router.push(`${ROUTES.INTERVIEWS}/${id}/ai-room/session`)}
+                disabled={interviewQuery.isLoading || !interview}
+                sx={{ borderRadius: 2, fontWeight: 900 }}
+              >
+                Join AI Interview
+              </Button>
+            </>
+          ) : invite?.join_url ? (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AiIcon />}
+              onClick={() => router.push(invite.join_url!)}
+              sx={{ borderRadius: 2, fontWeight: 900 }}
+            >
+              Preview Candidate Flow
+            </Button>
+          ) : null}
           {canRescheduleInterview && interview && ["SCHEDULED", "RESCHEDULED"].includes(interview.interview_status) ? (
             <Button
               variant="contained"
@@ -246,6 +289,96 @@ export function InterviewDetailsView({ id }: { id: string }) {
                   </CardContent>
                 </Card>
               </Stack>
+
+              {interview.is_ai_interview ? (
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography sx={{ fontWeight: 900 }}>Candidate Interview Invitation</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          The candidate should use a secure invitation link to complete this AI interview. Internal users review the transcript and AI feedback after completion.
+                        </Typography>
+                      </Box>
+
+                      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+                        <Chip
+                          label={`Status: ${invite?.status ?? "NOT_GENERATED"}`}
+                          color={invite?.status === "COMPLETED" ? "success" : invite?.status === "REVOKED" ? "error" : "primary"}
+                          variant={invite ? "filled" : "outlined"}
+                        />
+                        {invite?.expires_at ? (
+                          <Chip label={`Expires: ${formatDateTime(invite.expires_at)}`} variant="outlined" />
+                        ) : null}
+                        {invite?.last_accessed_at ? (
+                          <Chip label={`Last accessed: ${formatDateTime(invite.last_accessed_at)}`} variant="outlined" />
+                        ) : null}
+                      </Stack>
+
+                      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+                        {!invite ? (
+                          <Button
+                            variant="contained"
+                            onClick={async () => {
+                              try {
+                                const response = await createInviteMutation.mutateAsync({ interview_id: id });
+                                showSuccess(response.message || "Invite generated");
+                              } catch (error) {
+                                showError(getApiErrorMessage(error));
+                              }
+                            }}
+                            disabled={createInviteMutation.isPending}
+                            sx={{ borderRadius: 2, fontWeight: 900 }}
+                          >
+                            {createInviteMutation.isPending ? "Generating..." : "Generate Invite"}
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outlined"
+                              onClick={copyInviteLink}
+                              sx={{ borderRadius: 2, fontWeight: 900 }}
+                            >
+                              Copy Interview Link
+                            </Button>
+                            <Button
+                              variant="contained"
+                              onClick={async () => {
+                                try {
+                                  const response = await regenerateInviteMutation.mutateAsync(invite.id);
+                                  showSuccess(response.message || "Invite regenerated");
+                                } catch (error) {
+                                  showError(getApiErrorMessage(error));
+                                }
+                              }}
+                              disabled={regenerateInviteMutation.isPending}
+                              sx={{ borderRadius: 2, fontWeight: 900 }}
+                            >
+                              {regenerateInviteMutation.isPending ? "Regenerating..." : "Regenerate Link"}
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              onClick={async () => {
+                                try {
+                                  const response = await revokeInviteMutation.mutateAsync(invite.id);
+                                  showSuccess(response.message || "Invite revoked");
+                                } catch (error) {
+                                  showError(getApiErrorMessage(error));
+                                }
+                              }}
+                              disabled={revokeInviteMutation.isPending}
+                              sx={{ borderRadius: 2, fontWeight: 900 }}
+                            >
+                              {revokeInviteMutation.isPending ? "Revoking..." : "Revoke Link"}
+                            </Button>
+                          </>
+                        )}
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : null}
 
               <Card variant="outlined" sx={{ borderRadius: 2 }}>
                 <CardContent>

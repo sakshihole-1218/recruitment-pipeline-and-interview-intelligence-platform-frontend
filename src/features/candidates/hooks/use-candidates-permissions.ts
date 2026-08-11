@@ -1,18 +1,18 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 
 // Centralized RBAC for Candidates module
 export function useCandidatesPermissions() {
-  const role = getUserRole();
+  const roles = getUserRoles();
 
   // Backend controller allows ADMIN/RECRUITER/HIRING_MANAGER to list & view.
   const canViewCandidates =
-    role === ROLES.ADMIN || role === ROLES.RECRUITER || role === ROLES.HIRING_MANAGER;
+    hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER]);
 
   // Backend mutations are ADMIN/RECRUITER.
-  const canMutateCandidates = role === ROLES.ADMIN || role === ROLES.RECRUITER;
+  const canMutateCandidates = hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER]);
 
   return {
     canViewCandidates,

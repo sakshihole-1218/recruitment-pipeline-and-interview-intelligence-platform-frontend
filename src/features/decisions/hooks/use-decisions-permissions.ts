@@ -1,18 +1,15 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 
 export function useDecisionsPermissions() {
-  const role = getUserRole();
+  const roles = getUserRoles();
 
   const canViewDecisions =
-    role === ROLES.ADMIN ||
-    role === ROLES.RECRUITER ||
-    role === ROLES.HIRING_MANAGER;
+    hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER]);
 
-  const canMutateDecisions =
-    role === ROLES.ADMIN || role === ROLES.HIRING_MANAGER;
+  const canMutateDecisions = hasAnyRole(roles, [ROLES.ADMIN, ROLES.HIRING_MANAGER]);
 
   return {
     canViewDecisions,

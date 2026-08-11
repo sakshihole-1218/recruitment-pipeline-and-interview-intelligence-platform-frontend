@@ -16,7 +16,7 @@ import {
   LocalOffer as OfferIcon,
 } from "@mui/icons-material";
 import { authStorage } from "@/utils/auth-storage";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 import { ROLES, type Role } from "@/constants/roles";
 
 
@@ -95,14 +95,23 @@ const SUMMARY_CARDS: {
 export default function DashboardPage() {
   const user = authStorage.getUser();
   const firstName = user?.first_name ?? "there";
-  const role = getUserRole();
+  const roles = getUserRoles();
+  const isAdmin = hasAnyRole(roles, [ROLES.ADMIN]);
+  const isInterviewerOnly =
+    hasAnyRole(roles, [ROLES.INTERVIEWER]) &&
+    !hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER]);
+  const hasPipelineAccess = hasAnyRole(roles, [
+    ROLES.ADMIN,
+    ROLES.RECRUITER,
+    ROLES.HIRING_MANAGER,
+  ]);
 
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: pipeline, isLoading: pipelineLoading } = usePipelineActivity();
   const { data: activity, isLoading: activityLoading } = useRecentActivity();
 
   const visibleCards = SUMMARY_CARDS.filter(
-    (card) => role !== null && card.roles.includes(role),
+    (card) => card.roles.some((role) => roles.includes(role)),
   );
 
   return (
@@ -163,10 +172,10 @@ export default function DashboardPage() {
         ))}
       </Grid>
 
-      {/* Pipeline Activity & Recent Activity feed - Hidden for Interviewers */}
-      {role !== "INTERVIEWER" && (
+      {/* Pipeline Activity & Recent Activity feed - Hidden for interviewer-only users */}
+      {hasPipelineAccess && !isInterviewerOnly && (
         <Grid container spacing={3} sx={{ mt: 1 }}>
-          <Grid size={{ xs: 12, md: role === "ADMIN" ? 8 : 12 }}>
+          <Grid size={{ xs: 12, md: isAdmin ? 8 : 12 }}>
             <Card
               elevation={0}
               sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}
@@ -221,7 +230,7 @@ export default function DashboardPage() {
             </Card>
           </Grid>
 
-          {role === "ADMIN" && (
+          {isAdmin && (
             <Grid size={{ xs: 12, md: 4 }}>
               <Card
                 elevation={0}

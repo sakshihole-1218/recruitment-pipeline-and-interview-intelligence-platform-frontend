@@ -48,6 +48,7 @@ interface CandidateVoiceAnswerBoxProps {
   onSubmitAudioAnswer: (
     recording: RecordedAudio,
   ) => Promise<AiInterviewAnswerSubmissionResult> | AiInterviewAnswerSubmissionResult;
+  fillHeight?: boolean;
 }
 
 export function CandidateVoiceAnswerBox({
@@ -66,6 +67,7 @@ export function CandidateVoiceAnswerBox({
   onSubmitError,
   onSubmitManualAnswer,
   onSubmitAudioAnswer,
+  fillHeight = false,
 }: CandidateVoiceAnswerBoxProps) {
   const [messageText, setMessageText] = useState("");
   const [recording, setRecording] = useState<RecordedAudio | null>(null);
@@ -119,10 +121,11 @@ export function CandidateVoiceAnswerBox({
         borderRadius: 3,
         border: "1px solid",
         borderColor: "divider",
+        height: fillHeight ? "100%" : "auto",
       }}
     >
-      <CardContent sx={{ p: 3 }}>
-        <Stack spacing={3}>
+      <CardContent sx={{ p: 3, height: fillHeight ? "100%" : "auto" }}>
+        <Stack spacing={3} sx={{ height: fillHeight ? "100%" : "auto" }}>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
               Candidate Answer

@@ -13,6 +13,8 @@ import {
   CardContent,
   Divider,
   Grid,
+  FormControlLabel,
+  Checkbox,
   Link,
   MenuItem,
   Stack,
@@ -136,6 +138,7 @@ export function InterviewScheduleView() {
       scheduled_start_at_local: "",
       scheduled_end_at_local: "",
       interview_mode: INTERVIEW_MODES[0],
+      is_ai_interview: false,
       meeting_link: "",
       location_details: "",
       members: [],
@@ -206,6 +209,7 @@ export function InterviewScheduleView() {
         scheduled_start_at: toIso(values.scheduled_start_at_local),
         scheduled_end_at: toIso(values.scheduled_end_at_local),
         interview_mode: values.interview_mode,
+        is_ai_interview: values.is_ai_interview,
         ...(values.meeting_link && values.meeting_link.trim() !== ""
           ? { meeting_link: values.meeting_link.trim() }
           : {}),
@@ -473,6 +477,31 @@ export function InterviewScheduleView() {
                         </MenuItem>
                       ))}
                     </TextField>
+                  )}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Controller
+                  name="is_ai_interview"
+                  control={control}
+                  render={({ field }) => (
+                    <Card variant="outlined" sx={{ borderRadius: 2, height: "100%" }}>
+                      <CardContent>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={field.value}
+                              onChange={(event) => field.onChange(event.target.checked)}
+                            />
+                          }
+                          label="Candidate-facing AI interview"
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          Generates a secure candidate interview link and uses the AI interview portal instead of an internal interviewer joining live.
+                        </Typography>
+                      </CardContent>
+                    </Card>
                   )}
                 />
               </Grid>

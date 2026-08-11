@@ -17,6 +17,7 @@ export const scheduleInterviewSchema = z
     scheduled_end_at_local: z.string().min(1, "End time is required"),
 
     interview_mode: z.enum(INTERVIEW_MODES),
+    is_ai_interview: z.boolean().default(false),
     meeting_link: z
       .string()
       .min(5, "Meeting link must be at least 5 characters")

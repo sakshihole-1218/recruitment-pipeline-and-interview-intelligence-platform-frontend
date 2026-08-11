@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import NextLink from "next/link";
 import {
+  Chip,
   Box,
   Breadcrumbs,
   Button,
@@ -21,6 +22,7 @@ import {
   ArrowBack as BackIcon,
   NavigateNext as NavigateNextIcon,
   Event as InterviewsIcon,
+  SmartToyOutlined as AiIcon,
 } from "@mui/icons-material";
 import { useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
@@ -35,6 +37,12 @@ import {
   rescheduleInterviewSchema,
   type RescheduleInterviewFormValues,
 } from "@/features/interviews/schemas/interview-reschedule.schema";
+import {
+  useCandidateInterviewInvite,
+  useCreateCandidateInterviewInvite,
+  useRegenerateCandidateInterviewInvite,
+  useRevokeCandidateInterviewInvite,
+} from "@/features/candidate-interview/hooks/use-candidate-interview";
 
 function toIso(localValue: string) {
   return new Date(localValue).toISOString();
@@ -61,6 +69,11 @@ export function InterviewEditView({ id }: { id: string }) {
 
   const interviewQuery = useInterview(id);
   const interview = interviewQuery.data?.data;
+  const inviteQuery = useCandidateInterviewInvite(id);
+  const invite = inviteQuery.data?.data;
+  const createInviteMutation = useCreateCandidateInterviewInvite(id);
+  const regenerateInviteMutation = useRegenerateCandidateInterviewInvite(id);
+  const revokeInviteMutation = useRevokeCandidateInterviewInvite(id);
 
   const rescheduleMutation = useRescheduleInterview(id);
 
@@ -113,6 +126,30 @@ export function InterviewEditView({ id }: { id: string }) {
   };
 
   const errorMessage = interviewQuery.isError ? getApiErrorMessage(interviewQuery.error) : "";
+
+  const copyInviteLink = async () => {
+    const link = invite?.join_url;
+    if (!link) {
+      showError("Generate an invite first");
+      return;
+    }
+
+    const absolute = typeof window !== "undefined" ? `${window.location.origin}${link}` : link;
+
+    try {
+      await navigator.clipboard.writeText(absolute);
+      showSuccess("Candidate interview link copied");
+    } catch {
+      showError("Unable to copy interview link");
+    }
+  };
+
+  const formatDateTime = (value: string | null | undefined) => {
+    if (!value) return "—";
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return "—";
+    return d.toLocaleString();
+  };
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto" }}>
@@ -172,6 +209,101 @@ export function InterviewEditView({ id }: { id: string }) {
                 Rescheduling creates a new interview record.
               </Typography>
               <Grid container spacing={2.5}>
+                {interview?.is_ai_interview ? (
+                  <Grid size={{ xs: 12 }}>
+                    <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                      <CardContent>
+                        <Stack spacing={2}>
+                          <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start" }}>
+                            <AiIcon color="primary" sx={{ mt: 0.25 }} />
+                            <Box>
+                              <Typography sx={{ fontWeight: 900 }}>Candidate-facing AI interview</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                This interview uses the secure candidate invite flow. If you reschedule, the new interview record will keep this AI interview mode, and invite actions should be managed from that new record after rescheduling.
+                              </Typography>
+                            </Box>
+                          </Stack>
+
+                          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+                            <Chip
+                              label={`Status: ${invite?.status ?? "NOT_GENERATED"}`}
+                              color={invite?.status === "COMPLETED" ? "success" : invite?.status === "REVOKED" ? "error" : "primary"}
+                              variant={invite ? "filled" : "outlined"}
+                            />
+                            {invite?.expires_at ? (
+                              <Chip label={`Expires: ${formatDateTime(invite.expires_at)}`} variant="outlined" />
+                            ) : null}
+                            {invite?.last_accessed_at ? (
+                              <Chip label={`Last accessed: ${formatDateTime(invite.last_accessed_at)}`} variant="outlined" />
+                            ) : null}
+                          </Stack>
+
+                          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+                            {!invite ? (
+                              <Button
+                                variant="contained"
+                                onClick={async () => {
+                                  try {
+                                    const response = await createInviteMutation.mutateAsync({ interview_id: id });
+                                    showSuccess(response.message || "Invite generated");
+                                  } catch (error) {
+                                    showError(getApiErrorMessage(error));
+                                  }
+                                }}
+                                disabled={createInviteMutation.isPending}
+                                sx={{ borderRadius: 2, fontWeight: 900 }}
+                              >
+                                {createInviteMutation.isPending ? "Generating..." : "Generate Invite"}
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="outlined"
+                                  onClick={copyInviteLink}
+                                  sx={{ borderRadius: 2, fontWeight: 900 }}
+                                >
+                                  Copy Interview Link
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  onClick={async () => {
+                                    try {
+                                      const response = await regenerateInviteMutation.mutateAsync(invite.id);
+                                      showSuccess(response.message || "Invite regenerated");
+                                    } catch (error) {
+                                      showError(getApiErrorMessage(error));
+                                    }
+                                  }}
+                                  disabled={regenerateInviteMutation.isPending}
+                                  sx={{ borderRadius: 2, fontWeight: 900 }}
+                                >
+                                  {regenerateInviteMutation.isPending ? "Regenerating..." : "Regenerate Link"}
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  onClick={async () => {
+                                    try {
+                                      const response = await revokeInviteMutation.mutateAsync(invite.id);
+                                      showSuccess(response.message || "Invite revoked");
+                                    } catch (error) {
+                                      showError(getApiErrorMessage(error));
+                                    }
+                                  }}
+                                  disabled={revokeInviteMutation.isPending}
+                                  sx={{ borderRadius: 2, fontWeight: 900 }}
+                                >
+                                  {revokeInviteMutation.isPending ? "Revoking..." : "Revoke Link"}
+                                </Button>
+                              </>
+                            )}
+                          </Stack>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ) : null}
+
                 <Grid size={{ xs: 12 }}>
                   <Stack spacing={0.25}>
                     <Typography sx={{ fontWeight: 900 }}>New Schedule</Typography>

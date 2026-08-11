@@ -1,17 +1,23 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 
 export function useInterviewRoundsPermissions() {
-  const role = getUserRole();
+  const roles = getUserRoles();
 
   // Backend guards allow ADMIN/RECRUITER/HIRING_MANAGER to access controller.
-  const canViewInterviewRounds =
-    role === ROLES.ADMIN || role === ROLES.RECRUITER || role === ROLES.HIRING_MANAGER;
+  const canViewInterviewRounds = hasAnyRole(roles, [
+    ROLES.ADMIN,
+    ROLES.RECRUITER,
+    ROLES.HIRING_MANAGER,
+  ]);
 
   // Mutations are ADMIN/RECRUITER.
-  const canMutateInterviewRounds = role === ROLES.ADMIN || role === ROLES.RECRUITER;
+  const canMutateInterviewRounds = hasAnyRole(roles, [
+    ROLES.ADMIN,
+    ROLES.RECRUITER,
+  ]);
 
   return {
     canViewInterviewRounds,

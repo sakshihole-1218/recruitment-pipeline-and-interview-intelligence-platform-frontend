@@ -37,7 +37,7 @@ import {
 import NextLink from "next/link";
 
 import { ROUTES } from "@/constants/routes";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 import { ROLES } from "@/constants/roles";
 import { getApiErrorMessage } from "@/utils/api-error-handler";
 import { useUsers, useToggleUserStatus } from "@/features/users/hooks/use-users";
@@ -109,8 +109,8 @@ function NoRowsOverlay({ isError, errorMessage }: NoRowsOverlayProps) {
 
 export default function UsersPage() {
   const router = useRouter();
-  const role = getUserRole();
-  const isAdmin = role === ROLES.ADMIN;
+  const roles = getUserRoles();
+  const isAdmin = hasAnyRole(roles, [ROLES.ADMIN]);
 
   const { snackbar, showSuccess, showError, closeSnackbar } = useSnackbar();
 

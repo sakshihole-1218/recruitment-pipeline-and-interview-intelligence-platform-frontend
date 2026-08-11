@@ -1,20 +1,17 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 
 export function useInterviewsPermissions() {
-  const role = getUserRole();
+  const roles = getUserRoles();
 
   // Backend list/detail are accessible to ADMIN/RECRUITER/HIRING_MANAGER/INTERVIEWER
   const canViewInterviews =
-    role === ROLES.ADMIN ||
-    role === ROLES.RECRUITER ||
-    role === ROLES.HIRING_MANAGER ||
-    role === ROLES.INTERVIEWER;
+    hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER, ROLES.INTERVIEWER]);
 
   // Schedule / cancel / reschedule are ADMIN/RECRUITER.
-  const canMutateInterviews = role === ROLES.ADMIN || role === ROLES.RECRUITER;
+  const canMutateInterviews = hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER]);
 
   return {
     canViewInterviews,

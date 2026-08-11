@@ -1,14 +1,14 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 
 // Centralized RBAC for Roles module (pages/components should not hardcode role checks)
 export function useRolesPermissions() {
-  const role = getUserRole();
+  const roles = getUserRoles();
 
   // Backend Access Control Roles endpoints are ADMIN-only.
-  const canViewRoles = role === ROLES.ADMIN;
+  const canViewRoles = hasAnyRole(roles, [ROLES.ADMIN]);
 
   // Backend does NOT expose create/update/delete role endpoints currently.
   const mutationsSupported = false;

@@ -1,18 +1,18 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 
 // Centralized RBAC for Departments module
 export function useDepartmentsPermissions() {
-  const role = getUserRole();
+  const roles = getUserRoles();
 
   // Backend allows all authenticated roles (ADMIN/RECRUITER/HIRING_MANAGER/INTERVIEWER)
   // to list and view departments.
-  const canViewDepartments = !!role;
+  const canViewDepartments = roles.length > 0;
 
   // Backend mutations are ADMIN-only.
-  const canMutateDepartments = role === ROLES.ADMIN;
+  const canMutateDepartments = hasAnyRole(roles, [ROLES.ADMIN]);
 
   return {
     canViewDepartments,

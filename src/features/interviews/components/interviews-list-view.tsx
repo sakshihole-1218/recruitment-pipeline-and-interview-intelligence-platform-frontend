@@ -329,7 +329,13 @@ export function InterviewsListView() {
             <Tooltip title="Open AI interview lobby">
               <IconButton
                 size="small"
-                onClick={() => router.push(`${ROUTES.INTERVIEWS}/${p.row.id}/ai-room`)}
+                onClick={() =>
+                  router.push(
+                    p.row.is_ai_interview
+                      ? `${ROUTES.INTERVIEWS}/${p.row.id}`
+                      : `${ROUTES.INTERVIEWS}/${p.row.id}/ai-room`,
+                  )
+                }
                 sx={actionIconButtonSx}
               >
                 <AiIcon fontSize="small" />

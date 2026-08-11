@@ -76,6 +76,7 @@ export interface InterviewResponse {
   scheduled_start_at: string;
   scheduled_end_at: string;
   interview_mode: InterviewMode;
+  is_ai_interview: boolean;
   meeting_link: string | null;
   location_details: string | null;
   interview_status: InterviewStatus;
@@ -113,6 +114,7 @@ export interface ScheduleInterviewPayload {
   scheduled_start_at: string; // ISO8601
   scheduled_end_at: string; // ISO8601
   interview_mode: InterviewMode;
+  is_ai_interview?: boolean;
   meeting_link?: string;
   location_details?: string;
   members?: InterviewPanelMemberInput[];

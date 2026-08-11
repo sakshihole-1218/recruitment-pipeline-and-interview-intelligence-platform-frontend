@@ -20,6 +20,7 @@ import type {
 interface TranscriptPanelProps {
   questions: AiInterviewQuestionResponse[];
   transcriptEntries: AiInterviewTranscriptEntryResponse[];
+  fillHeight?: boolean;
 }
 
 function getSpeakerLabel(speakerType: AiInterviewTranscriptEntryResponse["speaker_type"]) {
@@ -37,6 +38,7 @@ function getBubbleAlignment(
 export function TranscriptPanel({
   questions,
   transcriptEntries,
+  fillHeight = false,
 }: TranscriptPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const questionById = new Map(questions.map((question) => [question.id, question]));
@@ -68,11 +70,11 @@ export function TranscriptPanel({
         border: "1px solid",
         borderColor: "divider",
         minHeight: 360,
-        height: "100%",
+        height: fillHeight ? "100%" : "auto",
       }}
     >
-      <CardContent sx={{ p: 3, height: "100%" }}>
-        <Stack spacing={1.5}>
+      <CardContent sx={{ p: 3, height: fillHeight ? "100%" : "auto" }}>
+        <Stack spacing={1.5} sx={{ height: fillHeight ? "100%" : "auto" }}>
           <Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}>
             <TranscriptIcon color="primary" />
             <Typography variant="h6" sx={{ fontWeight: 900 }}>

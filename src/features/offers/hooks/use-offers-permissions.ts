@@ -1,17 +1,15 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { getUserRole } from "@/utils/rbac";
+import { getUserRoles, hasAnyRole } from "@/utils/rbac";
 
 export function useOffersPermissions() {
-  const role = getUserRole();
+  const roles = getUserRoles();
 
   const canViewOffers =
-    role === ROLES.ADMIN ||
-    role === ROLES.RECRUITER ||
-    role === ROLES.HIRING_MANAGER;
+    hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER, ROLES.HIRING_MANAGER]);
 
-  const canMutateOffers = role === ROLES.ADMIN || role === ROLES.RECRUITER;
+  const canMutateOffers = hasAnyRole(roles, [ROLES.ADMIN, ROLES.RECRUITER]);
 
   return {
     canViewOffers,

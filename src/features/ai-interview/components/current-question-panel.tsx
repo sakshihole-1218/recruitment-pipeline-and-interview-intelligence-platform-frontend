@@ -28,6 +28,7 @@ interface CurrentQuestionPanelProps {
   onStopSpeaking: () => void;
   onPauseSpeaking: () => void;
   onResumeSpeaking: () => void;
+  fillHeight?: boolean;
 }
 
 export function CurrentQuestionPanel({
@@ -49,6 +50,7 @@ export function CurrentQuestionPanel({
   onStopSpeaking,
   onPauseSpeaking,
   onResumeSpeaking,
+  fillHeight = false,
 }: CurrentQuestionPanelProps) {
   return (
     <Card
@@ -57,6 +59,7 @@ export function CurrentQuestionPanel({
         borderRadius: 3,
         border: "1px solid",
         borderColor: "divider",
+        height: fillHeight ? "100%" : "auto",
       }}
     >
       <CardContent sx={{ p: 3 }}>
